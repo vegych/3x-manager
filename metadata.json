@@ -1,0 +1,6 @@
+{
+  "name": "3x manager",
+  "description": "3x-ui panel management with SSH tunneling and local LAN port forwarding",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
