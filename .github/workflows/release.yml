@@ -57,14 +57,14 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug -PversionCode=${{ github.run_number }} -PversionName=${{ env.VERSION_NAME }} -x validateSigningDebug --stacktrace
+      - name: Build Release APK
+        run: ./gradlew assembleRelease -PversionCode=${{ github.run_number }} -PversionName=${{ env.VERSION_NAME }} --stacktrace
         working-directory: ${{ github.workspace }}
 
       - name: Prepare APK Artifact
         run: |
           mkdir -p release-artifacts
-          cp app/build/outputs/apk/debug/app-debug.apk release-artifacts/3x-manager-${{ env.VERSION_TAG }}.apk
+          cp app/build/outputs/apk/release/app-release.apk release-artifacts/3x-manager-${{ env.VERSION_TAG }}.apk
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
