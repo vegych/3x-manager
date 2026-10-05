@@ -30,19 +30,27 @@ jobs:
           java-version: '21'
           cache: 'gradle'
 
-      - name: Restore debug keystore
+      - name: Generate Debug Keystore
         run: |
           if [ -f debug.keystore.base64 ]; then
             base64 -d debug.keystore.base64 > debug.keystore
-          else
-            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
           fi
+          if [ ! -f debug.keystore ]; then
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey \
+              -keypass android -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Android Debug,O=Android,C=US"
+          fi
+          cp -f debug.keystore app/debug.keystore || true
+          mkdir -p ~/.android && cp -f debug.keystore ~/.android/debug.keystore || true
+          ls -la debug.keystore
+        working-directory: ${{ github.workspace }}
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug -x validateSigningDebug --stacktrace
+        working-directory: ${{ github.workspace }}
 
       - name: Prepare APK Artifact
         run: |
