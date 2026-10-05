@@ -36,6 +36,12 @@ enum class AppThemeMode(val title: String) {
     SYSTEM("Системная")
 }
 
+enum class ServerSortMode(val title: String) {
+    BY_USAGE("По частоте"),
+    ALPHABETICAL("По алфавиту"),
+    NEWEST("По дате")
+}
+
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppRepository(application)
     private val prefs = application.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
@@ -227,8 +233,31 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    val servers: StateFlow<List<ServerEntity>> = repository.allServers
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    private val _sortMode = MutableStateFlow(
+        ServerSortMode.values().find { it.name == prefs.getString("server_sort_mode", ServerSortMode.BY_USAGE.name) }
+            ?: ServerSortMode.BY_USAGE
+    )
+    val sortMode: StateFlow<ServerSortMode> = _sortMode.asStateFlow()
+
+    fun setSortMode(mode: ServerSortMode) {
+        _sortMode.value = mode
+        prefs.edit().putString("server_sort_mode", mode.name).apply()
+    }
+
+    val servers: StateFlow<List<ServerEntity>> = kotlinx.coroutines.flow.combine(
+        repository.allServers,
+        _sortMode
+    ) { list, sort ->
+        when (sort) {
+            ServerSortMode.BY_USAGE -> list.sortedWith(
+                compareByDescending<ServerEntity> { it.usageCount }
+                    .thenByDescending { it.lastConnectedAt }
+                    .thenBy { it.name.lowercase() }
+            )
+            ServerSortMode.ALPHABETICAL -> list.sortedBy { it.name.lowercase() }
+            ServerSortMode.NEWEST -> list.sortedByDescending { it.createdAt }
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val tunnels: StateFlow<List<TunnelConfigEntity>> = repository.allTunnels
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
@@ -275,6 +304,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectServer(server: ServerEntity, context: Context? = null) {
         _selectedServer.value = server
+        viewModelScope.launch {
+            repository.recordServerUsage(server.id)
+        }
         if (server.useTunnel && context != null) {
             val currentTunnel = tunnelState.value
             if (!currentTunnel.isRunning || currentTunnel.localPort != server.localPort) {

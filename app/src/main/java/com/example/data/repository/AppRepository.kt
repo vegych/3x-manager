@@ -30,61 +30,11 @@ class AppRepository(context: Context) {
     val defaultServer: Flow<ServerEntity?> = serverDao.getDefaultServer()
 
     suspend fun initDefaultDataIfNeeded() = withContext(Dispatchers.IO) {
-        if (serverDao.getServerCount() == 0) {
-            val demoTunnelId = tunnelDao.insertTunnel(
-                TunnelConfigEntity(
-                    name = "Основной SSH Туннель (LAN Проброс)",
-                    type = "SSH",
-                    sshHost = "194.87.21.55",
-                    sshPort = 22,
-                    sshUser = "root",
-                    sshPassword = "",
-                    remoteTargetHost = "127.0.0.1",
-                    remoteTargetPort = 2053,
-                    localPort = 8080,
-                    bindToLan = true
-                )
-            )
+        // Clean start: No hardcoded demo IP addresses or credentials
+    }
 
-            serverDao.insertServer(
-                ServerEntity(
-                    name = "VPS 3x-ui (Termius Auto Tunnel)",
-                    host = "localhost",
-                    port = 2370,
-                    useHttps = true,
-                    basePath = "4zQr4STYGUC1BDIMos/panel",
-                    username = "admin",
-                    password = "admin",
-                    useTunnel = true,
-                    autoConnectTunnel = true,
-                    sshHost = "194.87.21.55",
-                    sshPort = 22,
-                    sshUser = "root",
-                    sshAuthType = "KEY",
-                    sshPassword = "",
-                    sshKey = "",
-                    remoteTargetHost = "127.0.0.1",
-                    remoteTargetPort = 2370,
-                    localPort = 2370,
-                    bindToLan = true,
-                    tunnelId = demoTunnelId,
-                    isDefault = true,
-                    isOnline = true,
-                    lastPingMs = 38
-                )
-            )
-
-            tunnelDao.insertTunnel(
-                TunnelConfigEntity(
-                    name = "Локальный TCP Реле (LAN 8081)",
-                    type = "TCP_RELAY",
-                    remoteTargetHost = "192.168.1.1",
-                    remoteTargetPort = 2053,
-                    localPort = 8081,
-                    bindToLan = true
-                )
-            )
-        }
+    suspend fun recordServerUsage(id: Long) = withContext(Dispatchers.IO) {
+        serverDao.incrementUsage(id)
     }
 
     suspend fun saveServer(server: ServerEntity): Long = withContext(Dispatchers.IO) {

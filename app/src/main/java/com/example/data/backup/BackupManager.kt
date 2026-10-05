@@ -62,6 +62,8 @@ object BackupManager {
             sObj.put("remoteTargetHost", server.remoteTargetHost)
             sObj.put("remoteTargetPort", server.remoteTargetPort)
             sObj.put("bindToLan", server.bindToLan)
+            sObj.put("usageCount", server.usageCount)
+            sObj.put("lastConnectedAt", server.lastConnectedAt)
             serversArray.put(sObj)
         }
         root.put("servers", serversArray)
@@ -104,7 +106,9 @@ object BackupManager {
                     localPort = sObj.optInt("localPort", 2370),
                     remoteTargetHost = sObj.optString("remoteTargetHost", "127.0.0.1"),
                     remoteTargetPort = sObj.optInt("remoteTargetPort", 2370),
-                    bindToLan = sObj.optBoolean("bindToLan", true)
+                    bindToLan = sObj.optBoolean("bindToLan", true),
+                    usageCount = sObj.optInt("usageCount", 0),
+                    lastConnectedAt = sObj.optLong("lastConnectedAt", 0L)
                 )
                 serversList.add(server)
             }

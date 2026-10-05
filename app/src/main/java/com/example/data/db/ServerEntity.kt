@@ -33,6 +33,8 @@ data class ServerEntity(
     val isDefault: Boolean = false,
     val lastPingMs: Long = -1,
     val isOnline: Boolean = false,
+    val usageCount: Int = 0,
+    val lastConnectedAt: Long = 0L,
     val createdAt: Long = System.currentTimeMillis()
 ) {
     fun getEffectiveUrl(tunnelLocalPort: Int? = null): String {

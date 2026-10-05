@@ -37,6 +37,9 @@ interface ServerDao {
     @Query("UPDATE servers SET isOnline = :isOnline, lastPingMs = :pingMs WHERE id = :id")
     suspend fun updateServerPing(id: Long, isOnline: Boolean, pingMs: Long)
 
+    @Query("UPDATE servers SET usageCount = usageCount + 1, lastConnectedAt = :timestamp WHERE id = :id")
+    suspend fun incrementUsage(id: Long, timestamp: Long = System.currentTimeMillis())
+
     @Query("SELECT COUNT(*) FROM servers")
     suspend fun getServerCount(): Int
 }

@@ -130,6 +130,7 @@ fun MainAppScreen(
     val closePolicy by viewModel.closePolicy.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val maskIp by viewModel.maskIp.collectAsStateWithLifecycle()
+    val sortMode by viewModel.sortMode.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -153,6 +154,46 @@ fun MainAppScreen(
                         )
                     },
                     actions = {
+                        // Компактная кнопка отключения туннелей прямо в основном меню
+                        if (tunnelState.isRunning) {
+                            Surface(
+                                shape = RoundedCornerShape(10.dp),
+                                color = RedAccent.copy(alpha = 0.15f),
+                                border = BorderStroke(1.dp, RedAccent.copy(alpha = 0.45f)),
+                                modifier = Modifier
+                                    .padding(end = 4.dp)
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .clickable { viewModel.stopTunnel(context) }
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(6.dp)
+                                            .clip(androidx.compose.foundation.shape.CircleShape)
+                                            .background(MintSecondary)
+                                    )
+                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Icon(
+                                        imageVector = Icons.Default.PowerSettingsNew,
+                                        contentDescription = "Отключить туннель",
+                                        tint = RedAccent,
+                                        modifier = Modifier.size(13.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "Откл.",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = RedAccent,
+                                        fontSize = 11.sp
+                                    )
+                                }
+                            }
+                        }
+
                         IconButton(onClick = { viewModel.toggleMaskIp() }) {
                             Icon(
                                 imageVector = if (maskIp) Icons.Default.VisibilityOff else Icons.Default.Visibility,
@@ -189,6 +230,9 @@ fun MainAppScreen(
                         selectedServer = selectedServer,
                         tunnelState = tunnelState,
                         maskIp = maskIp,
+                        sortMode = sortMode,
+                        onSortModeChange = { viewModel.setSortMode(it) },
+                        onStopTunnel = { viewModel.stopTunnel(context) },
                         onSelectServer = { server ->
                             viewModel.selectServer(server, context)
                             webPanelUrl = server.getEffectiveUrl()

@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -37,6 +38,7 @@ import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Login
+import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.VpnKey
@@ -101,6 +103,9 @@ fun ServersScreen(
     selectedServer: ServerEntity?,
     tunnelState: ActiveTunnelState? = null,
     maskIp: Boolean = false,
+    sortMode: com.example.ui.viewmodel.ServerSortMode = com.example.ui.viewmodel.ServerSortMode.BY_USAGE,
+    onSortModeChange: (com.example.ui.viewmodel.ServerSortMode) -> Unit = {},
+    onStopTunnel: (() -> Unit)? = null,
     onSelectServer: (ServerEntity) -> Unit,
     onSaveServer: (ServerEntity) -> Unit,
     onDeleteServer: (ServerEntity) -> Unit,
@@ -118,15 +123,97 @@ fun ServersScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                Spacer(modifier = Modifier.height(6.dp))
-                Box(
-                    modifier = Modifier.fillMaxWidth()
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
                         text = formatServerCount(servers.size),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+
+                    // Сортировка: По частоте / По алфавиту / Новые
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        com.example.ui.viewmodel.ServerSortMode.values().forEach { mode ->
+                            val isSelected = sortMode == mode
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (isSelected) CyanPrimary.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                                border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, CyanPrimary) else null,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable { onSortModeChange(mode) }
+                            ) {
+                                Text(
+                                    text = mode.title,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (isSelected) CyanPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Компактная плашка активного туннеля с кнопкой отключения
+            if (tunnelState?.isRunning == true) {
+                item {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = RedAccent.copy(alpha = 0.08f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, RedAccent.copy(alpha = 0.35f)),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 7.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(8.dp)
+                                        .clip(CircleShape)
+                                        .background(MintSecondary)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    text = "Туннель активен (: ${tunnelState.localPort})",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                                    fontWeight = FontWeight.SemiBold,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+
+                            Button(
+                                onClick = { onStopTunnel?.invoke() },
+                                colors = ButtonDefaults.buttonColors(containerColor = RedAccent),
+                                contentPadding = PaddingValues(horizontal = 10.dp, vertical = 2.dp),
+                                shape = RoundedCornerShape(8.dp),
+                                modifier = Modifier.height(28.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.PowerSettingsNew,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Отключить", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+                        }
+                    }
                 }
             }
 
@@ -429,7 +516,7 @@ fun ServerEditDialogClean(
     }
 
     // Line 3: Логин от нее
-    var panelUsername by remember { mutableStateOf(initialServer?.username ?: "admin") }
+    var panelUsername by remember { mutableStateOf(initialServer?.username ?: "") }
 
     // Line 4: Пароль от нее
     var panelPassword by remember { mutableStateOf(initialServer?.password ?: "") }
@@ -441,8 +528,8 @@ fun ServerEditDialogClean(
 
     // SSH Port Forwarding Server Fields (shown ONLY if URL contains localhost)
     var sshHost by remember { mutableStateOf(initialServer?.sshHost ?: "") }
-    var sshPortText by remember { mutableStateOf(initialServer?.sshPort?.toString() ?: "22") }
-    var sshUser by remember { mutableStateOf(initialServer?.sshUser ?: "root") }
+    var sshPortText by remember { mutableStateOf(initialServer?.let { if (it.sshPort == 22) "" else it.sshPort.toString() } ?: "") }
+    var sshUser by remember { mutableStateOf(initialServer?.let { if (it.sshUser == "root") "" else it.sshUser } ?: "") }
     var sshAuthType by remember { mutableStateOf(initialServer?.sshAuthType ?: "KEY") } // "KEY" or "PASSWORD"
     var sshPassword by remember { mutableStateOf(initialServer?.sshPassword ?: "") }
     var isSshPasswordVisible by remember { mutableStateOf(false) }
@@ -512,7 +599,12 @@ fun ServerEditDialogClean(
                                     }
                                 },
                                 label = { Text("Ссылка на панель (URL) *") },
-                                placeholder = { Text("https://localhost:2370/secret/panel/") },
+                                placeholder = {
+                                    Text(
+                                        "https://localhost:2370/secret/panel/",
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                                    )
+                                },
                                 singleLine = true,
                                 shape = RoundedCornerShape(12.dp),
                                 modifier = Modifier
@@ -546,6 +638,12 @@ fun ServerEditDialogClean(
                         value = panelUsername,
                         onValueChange = { panelUsername = it },
                         label = { Text("Логин от панели") },
+                        placeholder = {
+                            Text(
+                                "admin",
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                            )
+                        },
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
@@ -612,7 +710,12 @@ fun ServerEditDialogClean(
                                     value = sshHost,
                                     onValueChange = { sshHost = it },
                                     label = { Text("SSH Сервер (Intermediate host) *") },
-                                    placeholder = { Text("185.184.122.135") },
+                                    placeholder = {
+                                        Text(
+                                            "vps.example.com",
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                                        )
+                                    },
                                     singleLine = true,
                                     shape = RoundedCornerShape(12.dp),
                                     modifier = Modifier
@@ -626,7 +729,12 @@ fun ServerEditDialogClean(
                                         value = sshUser,
                                         onValueChange = { sshUser = it },
                                         label = { Text("SSH Юзер") },
-                                        placeholder = { Text("root") },
+                                        placeholder = {
+                                            Text(
+                                                "root",
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                                            )
+                                        },
                                         singleLine = true,
                                         shape = RoundedCornerShape(12.dp),
                                         modifier = Modifier.weight(2f)
@@ -637,7 +745,12 @@ fun ServerEditDialogClean(
                                         value = sshPortText,
                                         onValueChange = { sshPortText = it },
                                         label = { Text("Порт") },
-                                        placeholder = { Text("22") },
+                                        placeholder = {
+                                            Text(
+                                                "22",
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
+                                            )
+                                        },
                                         singleLine = true,
                                         shape = RoundedCornerShape(12.dp),
                                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -803,7 +916,7 @@ fun ServerEditDialogClean(
                         autoConnectTunnel = isLocalhost,
                         sshHost = if (isLocalhost) sshHost.trim() else "",
                         sshPort = sPort,
-                        sshUser = sshUser.trim(),
+                        sshUser = sshUser.trim().ifBlank { "root" },
                         sshAuthType = sshAuthType,
                         sshPassword = sshPassword,
                         sshKey = sshKey.trim(),
