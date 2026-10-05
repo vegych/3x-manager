@@ -17,3 +17,5 @@ local.properties
 .env
 debug.keystore
 .build-outputs/
+firebase-applet-config.json
+
