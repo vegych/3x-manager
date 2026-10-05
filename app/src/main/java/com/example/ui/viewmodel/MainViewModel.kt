@@ -282,10 +282,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _lanIp = MutableStateFlow("127.0.0.1")
     val lanIp: StateFlow<String> = _lanIp.asStateFlow()
 
+    private val _updateInfo = MutableStateFlow<com.example.data.updater.UpdateInfo?>(null)
+    val updateInfo: StateFlow<com.example.data.updater.UpdateInfo?> = _updateInfo.asStateFlow()
+
+    private val _isCheckingUpdate = MutableStateFlow(false)
+    val isCheckingUpdate: StateFlow<Boolean> = _isCheckingUpdate.asStateFlow()
+
     init {
         viewModelScope.launch {
             repository.initDefaultDataIfNeeded()
             updateLanIp()
+            kotlinx.coroutines.delay(2000)
+            checkForAppUpdates(silent = true)
         }
 
         viewModelScope.launch {
@@ -300,6 +308,29 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateLanIp() {
         _lanIp.value = NetworkUtils.getLocalIpAddress()
+    }
+
+    fun checkForAppUpdates(silent: Boolean = false) {
+        viewModelScope.launch {
+            _isCheckingUpdate.value = true
+            val res = com.example.data.updater.AppUpdateManager.checkForUpdates()
+            _isCheckingUpdate.value = false
+            if (res.isSuccess) {
+                val info = res.getOrThrow()
+                _updateInfo.value = info
+                if (info.hasUpdate) {
+                    _userMessage.emit("Доступно обновление: ${info.latestVersion}!")
+                } else if (!silent) {
+                    _userMessage.emit("У вас установлена последняя версия (${info.currentVersion})")
+                }
+            } else if (!silent) {
+                _userMessage.emit(res.exceptionOrNull()?.message ?: "Не удалось проверить обновления")
+            }
+        }
+    }
+
+    fun dismissUpdate() {
+        _updateInfo.value = null
     }
 
     fun selectServer(server: ServerEntity, context: Context? = null) {

@@ -17,6 +17,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +26,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -91,6 +94,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -131,6 +135,8 @@ fun MainAppScreen(
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
     val maskIp by viewModel.maskIp.collectAsStateWithLifecycle()
     val sortMode by viewModel.sortMode.collectAsStateWithLifecycle()
+    val updateInfo by viewModel.updateInfo.collectAsStateWithLifecycle()
+    val isCheckingUpdate by viewModel.isCheckingUpdate.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -286,6 +292,78 @@ fun MainAppScreen(
             onDismiss = { showSettingsDialog = false }
         )
     }
+
+    // Диалог авто-обновления приложения с GitHub Releases
+    updateInfo?.let { update ->
+        if (update.hasUpdate) {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissUpdate() },
+                icon = { Icon(Icons.Default.CloudDownload, contentDescription = null, tint = CyanPrimary) },
+                title = { Text("Доступно обновление!", fontWeight = FontWeight.Bold) },
+                text = {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            text = "Версия ${update.latestVersion} (у вас ${update.currentVersion})",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = CyanPrimary
+                        )
+
+                        Text(
+                            text = "Что нового в этом обновлении:",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(160.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(10.dp)
+                                    .verticalScroll(rememberScrollState())
+                            ) {
+                                Text(
+                                    text = update.releaseNotes.ifBlank { "• Улучшения стабильности и оптимизация работы" },
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.dismissUpdate()
+                            if (!update.downloadUrl.isNullOrBlank()) {
+                                com.example.data.updater.AppUpdateManager.startDownload(context, update.downloadUrl)
+                            } else {
+                                com.example.data.updater.AppUpdateManager.openBrowser(context, update.releasePageUrl)
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary)
+                    ) {
+                        Text("Скачать APK")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.dismissUpdate() }) {
+                        Text("Позже")
+                    }
+                }
+            )
+        }
+    }
 }
 
 @Composable
@@ -305,7 +383,9 @@ fun SettingsDialog(
 
     // Google Drive state
     val googleAccount by viewModel.googleAccount.collectAsStateWithLifecycle()
+    val isCheckingUpdate by viewModel.isCheckingUpdate.collectAsStateWithLifecycle()
     var isDriveLoading by remember { mutableStateOf(false) }
+    var showChangelogDialog by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         viewModel.checkGoogleAccount(context)
@@ -583,6 +663,70 @@ fun SettingsDialog(
                                 }
                             }
                         }
+
+                        // 3. Версия и Обновление приложения (GitHub Releases Auto-Updater)
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column {
+                                        Text(
+                                            text = "Версия приложения",
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Text(
+                                            text = "Текущая: v${com.example.BuildConfig.VERSION_NAME}",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+
+                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        OutlinedButton(
+                                            onClick = { showChangelogDialog = true },
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                            modifier = Modifier.height(34.dp)
+                                        ) {
+                                            Text("Чейнджлог", fontSize = 11.sp)
+                                        }
+
+                                        Button(
+                                            onClick = { viewModel.checkForAppUpdates(silent = false) },
+                                            enabled = !isCheckingUpdate,
+                                            colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
+                                            shape = RoundedCornerShape(8.dp),
+                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
+                                            modifier = Modifier.height(34.dp)
+                                        ) {
+                                            if (isCheckingUpdate) {
+                                                CircularProgressIndicator(
+                                                    modifier = Modifier.size(14.dp),
+                                                    strokeWidth = 2.dp,
+                                                    color = Color.White
+                                                )
+                                            } else {
+                                                Icon(
+                                                    imageVector = Icons.Default.Sync,
+                                                    contentDescription = null,
+                                                    modifier = Modifier.size(14.dp)
+                                                )
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Обновить", fontSize = 11.sp, color = Color.White)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
                     } else {
                         // Section 2: Backup & Restore (Google Drive, WebDAV, Local File)
                         // A. Google Drive Direct Sync
@@ -855,4 +999,69 @@ fun SettingsDialog(
             }
         }
     )
+
+    if (showChangelogDialog) {
+        AlertDialog(
+            onDismissRequest = { showChangelogDialog = false },
+            title = {
+                Text("История изменений", fontWeight = FontWeight.Bold)
+            },
+            text = {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(340.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    items(com.example.data.updater.AppChangelog.history) { entry ->
+                        Card(
+                            shape = RoundedCornerShape(10.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = entry.version,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = CyanPrimary
+                                    )
+                                    Text(
+                                        text = entry.date,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                entry.highlights.forEach { item ->
+                                    Text(
+                                        text = "• $item",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontSize = 12.sp,
+                                        color = MaterialTheme.colorScheme.onSurface,
+                                        modifier = Modifier.padding(vertical = 1.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = { showChangelogDialog = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary)
+                ) {
+                    Text("Понятно")
+                }
+            }
+        )
+    }
 }

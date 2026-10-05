@@ -16,8 +16,10 @@ android {
     applicationId = "com.aistudio.xuiadmin.portfwd"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    val vCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 1
+    val vName = (project.findProperty("versionName") as? String) ?: "1.0.0"
+    versionCode = vCode
+    versionName = vName
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
   }
