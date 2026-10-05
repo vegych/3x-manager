@@ -97,18 +97,17 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.data.backup.GoogleDriveBackupManager
 import com.example.ui.screens.ServersScreen
 import com.example.ui.screens.WebPanelScreen
+import com.example.ui.theme.AmberAccent
 import com.example.ui.theme.CyanPrimary
 import com.example.ui.theme.MintSecondary
 import com.example.ui.theme.RedAccent
 import com.example.ui.viewmodel.AppThemeMode
 import com.example.ui.viewmodel.MainViewModel
 import com.example.ui.viewmodel.TunnelClosePolicy
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.common.api.ApiException
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
@@ -381,30 +380,8 @@ fun SettingsDialog(
     var selectedTab by remember { mutableIntStateOf(0) } // 0 = Общие, 1 = Бэкап
     var policyExpanded by remember { mutableStateOf(false) }
 
-    // Google Drive state
-    val googleAccount by viewModel.googleAccount.collectAsStateWithLifecycle()
     val isCheckingUpdate by viewModel.isCheckingUpdate.collectAsStateWithLifecycle()
-    var isDriveLoading by remember { mutableStateOf(false) }
     var showChangelogDialog by remember { mutableStateOf(false) }
-
-    LaunchedEffect(Unit) {
-        viewModel.checkGoogleAccount(context)
-    }
-
-    val signInClient = remember { GoogleDriveBackupManager.getSignInClient(context) }
-
-    val googleSignInLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
-        try {
-            val account = task.getResult(ApiException::class.java)
-            viewModel.setGoogleAccount(account)
-            Toast.makeText(context, "Подключен: ${account.email}", Toast.LENGTH_SHORT).show()
-        } catch (e: Exception) {
-            Toast.makeText(context, "Вход не выполнен: ${e.message}", Toast.LENGTH_LONG).show()
-        }
-    }
 
     // WebDAV states (cached in remember)
     var webdavUrl by remember { mutableStateOf(viewModel.getSavedWebdavUrl()) }
@@ -412,7 +389,7 @@ fun SettingsDialog(
     var webdavPass by remember { mutableStateOf(viewModel.getSavedWebdavPass()) }
     var isWebdavLoading by remember { mutableStateOf(false) }
 
-    // File Export Launcher (Allows saving to local files or Google Drive via system storage picker)
+    // File Export Launcher (Allows saving to local files or cloud via system storage picker)
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri: Uri? ->
@@ -429,7 +406,7 @@ fun SettingsDialog(
         }
     }
 
-    // File Import Launcher (Allows restoring from local files or Google Drive)
+    // File Import Launcher (Allows restoring from local files or cloud)
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? ->
@@ -453,6 +430,10 @@ fun SettingsDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp),
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Settings, contentDescription = null, tint = CyanPrimary)
@@ -493,9 +474,9 @@ fun SettingsDialog(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(340.dp)
+                        .height(370.dp)
                         .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     if (selectedTab == 0) {
                         // 1. Theme Selection Segmented Row
@@ -542,10 +523,9 @@ fun SettingsDialog(
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Text(
                                                 text = mode.title,
-                                                style = MaterialTheme.typography.labelSmall,
+                                                style = MaterialTheme.typography.labelMedium,
                                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                                                color = if (isSelected) CyanPrimary else MaterialTheme.colorScheme.onSurface,
-                                                fontSize = 11.sp
+                                                color = if (isSelected) CyanPrimary else MaterialTheme.colorScheme.onSurface
                                             )
                                         }
                                     }
@@ -622,8 +602,7 @@ fun SettingsDialog(
                                                     Text(
                                                         text = policy.description,
                                                         style = MaterialTheme.typography.labelSmall,
-                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                        fontSize = 10.sp
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant
                                                     )
                                                 }
                                             }
@@ -646,19 +625,19 @@ fun SettingsDialog(
                                     modifier = Modifier.padding(12.dp)
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text("Туннель сейчас активен", fontWeight = FontWeight.Bold, color = MintSecondary, fontSize = 12.sp)
-                                        Text("Порт :${tunnelState.localPort}", style = MaterialTheme.typography.bodySmall, fontSize = 11.sp)
+                                        Text("SSH-туннель активен", fontWeight = FontWeight.Bold, color = MintSecondary, style = MaterialTheme.typography.bodyMedium)
+                                        Text("Фоновое безопасное соединение", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                     Button(
                                         onClick = onStopTunnel,
                                         colors = ButtonDefaults.buttonColors(containerColor = RedAccent),
                                         shape = RoundedCornerShape(8.dp),
                                         contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                        modifier = Modifier.height(30.dp)
+                                        modifier = Modifier.height(32.dp)
                                     ) {
                                         Icon(Icons.Default.PowerSettingsNew, contentDescription = null, modifier = Modifier.size(14.dp))
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Отключить", fontSize = 11.sp)
+                                        Text("Отключить", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
@@ -676,7 +655,7 @@ fun SettingsDialog(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Column {
+                                    Column(modifier = Modifier.weight(1f)) {
                                         Text(
                                             text = "Версия приложения",
                                             style = MaterialTheme.typography.titleSmall,
@@ -689,14 +668,17 @@ fun SettingsDialog(
                                         )
                                     }
 
-                                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
                                         OutlinedButton(
                                             onClick = { showChangelogDialog = true },
                                             shape = RoundedCornerShape(8.dp),
                                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                                             modifier = Modifier.height(34.dp)
                                         ) {
-                                            Text("Чейнджлог", fontSize = 11.sp)
+                                            Text("Чейнджлог", style = MaterialTheme.typography.labelSmall)
                                         }
 
                                         Button(
@@ -720,7 +702,7 @@ fun SettingsDialog(
                                                     modifier = Modifier.size(14.dp)
                                                 )
                                                 Spacer(modifier = Modifier.width(4.dp))
-                                                Text("Обновить", fontSize = 11.sp, color = Color.White)
+                                                Text("Обновить", style = MaterialTheme.typography.labelSmall, color = Color.White)
                                             }
                                         }
                                     }
@@ -728,263 +710,235 @@ fun SettingsDialog(
                             }
                         }
                     } else {
-                        // Section 2: Backup & Restore (Google Drive, WebDAV, Local File)
-                        // A. Google Drive Direct Sync
+                        // Tab 1: Бэкап и восстановление (Локальный файл и WebDAV)
+                        // A. Локальный бэкап (JSON-файл)
+                        Card(
+                            shape = RoundedCornerShape(14.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
+                            border = BorderStroke(1.dp, CyanPrimary.copy(alpha = 0.35f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(Icons.Default.Storage, contentDescription = null, tint = CyanPrimary, modifier = Modifier.size(20.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text("Локальный бэкап (JSON)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                    }
+                                    Surface(
+                                        shape = RoundedCornerShape(6.dp),
+                                        color = MintSecondary.copy(alpha = 0.2f)
+                                    ) {
+                                        Text("Надежно", color = MintSecondary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                Text(
+                                    text = "Сохранение и загрузка конфигураций через встроенный проводник Android",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            exportLauncher.launch("3xui_backup_${System.currentTimeMillis() / 1000}.json")
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(40.dp)
+                                    ) {
+                                        Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Сохранить",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = Color.White,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = {
+                                            importLauncher.launch(arrayOf("application/json", "*/*"))
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(40.dp)
+                                    ) {
+                                        Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Загрузить",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                OutlinedButton(
+                                    onClick = {
+                                        val json = viewModel.getBackupJson()
+                                        val intent = Intent(Intent.ACTION_SEND).apply {
+                                            type = "text/plain"
+                                            putExtra(Intent.EXTRA_SUBJECT, "3x-ui Backup")
+                                            putExtra(Intent.EXTRA_TEXT, json)
+                                        }
+                                        context.startActivity(Intent.createChooser(intent, "Поделиться бэкапом"))
+                                    },
+                                    shape = RoundedCornerShape(10.dp),
+                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(38.dp)
+                                ) {
+                                    Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = "Поделиться текстом бэкапа",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        maxLines = 1,
+                                        softWrap = false
+                                    )
+                                }
+                            }
+                        }
+
+                        // B. WebDAV Синхронизация
                         Card(
                             shape = RoundedCornerShape(14.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Icon(Icons.Default.Sync, contentDescription = null, tint = CyanPrimary, modifier = Modifier.size(20.dp))
+                                    Icon(Icons.Default.FolderShared, contentDescription = null, tint = CyanPrimary, modifier = Modifier.size(20.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Google Drive синхронизация", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleSmall)
-                                }
-                                Spacer(modifier = Modifier.height(4.dp))
-
-                                if (googleAccount == null) {
                                     Text(
-                                        text = "Подключите Google Аккаунт для облачной синхронизации конфигураций",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontSize = 11.sp
+                                        text = "Синхронизация по WebDAV",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
                                     )
-                                    Spacer(modifier = Modifier.height(10.dp))
+                                }
+                                Text(
+                                    text = "Яндекс Диск, Nextcloud, ownCloud или частный сервер",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+
+                                OutlinedTextField(
+                                    value = webdavUrl,
+                                    onValueChange = { webdavUrl = it },
+                                    label = { Text("URL WebDAV файла") },
+                                    placeholder = { Text("https://webdav.yandex.ru/backup.json") },
+                                    singleLine = true,
+                                    shape = RoundedCornerShape(10.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+                                    OutlinedTextField(
+                                        value = webdavUser,
+                                        onValueChange = { webdavUser = it },
+                                        label = { Text("Логин") },
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(10.dp),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                    OutlinedTextField(
+                                        value = webdavPass,
+                                        onValueChange = { webdavPass = it },
+                                        label = { Text("Пароль") },
+                                        singleLine = true,
+                                        shape = RoundedCornerShape(10.dp),
+                                        visualTransformation = PasswordVisualTransformation(),
+                                        modifier = Modifier.weight(1f)
+                                    )
+                                }
+
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                                     Button(
                                         onClick = {
-                                            googleSignInLauncher.launch(signInClient.signInIntent)
+                                            if (webdavUrl.isBlank()) {
+                                                Toast.makeText(context, "Укажите URL WebDAV", Toast.LENGTH_SHORT).show()
+                                                return@Button
+                                            }
+                                            isWebdavLoading = true
+                                            viewModel.uploadBackupToWebdav(webdavUrl, webdavUser, webdavPass) {
+                                                isWebdavLoading = false
+                                            }
                                         },
+                                        enabled = !isWebdavLoading && webdavUrl.isNotBlank(),
                                         colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
                                         shape = RoundedCornerShape(10.dp),
-                                        modifier = Modifier.fillMaxWidth()
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(40.dp)
                                     ) {
-                                        Icon(Icons.Default.AccountCircle, contentDescription = null, modifier = Modifier.size(18.dp))
-                                        Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Войти через Google", fontWeight = FontWeight.SemiBold)
-                                    }
-                                } else {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MintSecondary, modifier = Modifier.size(16.dp))
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = googleAccount?.email ?: "Аккаунт подключен",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = MintSecondary
-                                        )
-                                    }
-                                    Spacer(modifier = Modifier.height(10.dp))
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                                        Button(
-                                            onClick = {
-                                                isDriveLoading = true
-                                                viewModel.uploadBackupToDrive(context) {
-                                                    isDriveLoading = false
-                                                }
-                                            },
-                                            enabled = !isDriveLoading,
-                                            colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
-                                            shape = RoundedCornerShape(10.dp),
-                                            modifier = Modifier.weight(1f)
-                                        ) {
-                                            if (isDriveLoading) {
-                                                CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp))
-                                            } else {
-                                                Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Text("Выгрузить", fontSize = 12.sp)
-                                            }
-                                        }
-
-                                        OutlinedButton(
-                                            onClick = {
-                                                isDriveLoading = true
-                                                viewModel.restoreBackupFromDrive(context) {
-                                                    isDriveLoading = false
-                                                }
-                                            },
-                                            enabled = !isDriveLoading,
-                                            shape = RoundedCornerShape(10.dp),
-                                            modifier = Modifier.weight(1f)
-                                        ) {
-                                            Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
-                                            Spacer(modifier = Modifier.width(4.dp))
-                                            Text("Загрузить", fontSize = 12.sp)
+                                        if (isWebdavLoading) {
+                                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp))
+                                        } else {
+                                            Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "Выгрузить",
+                                                style = MaterialTheme.typography.labelLarge,
+                                                color = Color.White,
+                                                maxLines = 1,
+                                                softWrap = false
+                                            )
                                         }
                                     }
 
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    TextButton(
+                                    OutlinedButton(
                                         onClick = {
-                                            signInClient.signOut().addOnCompleteListener {
-                                                viewModel.setGoogleAccount(null)
+                                            if (webdavUrl.isBlank()) {
+                                                Toast.makeText(context, "Укажите URL WebDAV", Toast.LENGTH_SHORT).show()
+                                                return@OutlinedButton
+                                            }
+                                            isWebdavLoading = true
+                                            viewModel.restoreBackupFromWebdav(webdavUrl, webdavUser, webdavPass) {
+                                                isWebdavLoading = false
                                             }
                                         },
-                                        modifier = Modifier.align(Alignment.End)
+                                        enabled = !isWebdavLoading && webdavUrl.isNotBlank(),
+                                        shape = RoundedCornerShape(10.dp),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(40.dp)
                                     ) {
-                                        Text("Выйти из Google", color = RedAccent, fontSize = 11.sp)
+                                        Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = "Загрузить",
+                                            style = MaterialTheme.typography.labelLarge,
+                                            maxLines = 1,
+                                            softWrap = false
+                                        )
                                     }
                                 }
                             }
-                        }
-
-                        // B. WebDAV Backup Section
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.FolderShared, contentDescription = null, tint = CyanPrimary, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = "Резервная копия по WebDAV",
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                        Text(
-                            text = "Яндекс Диск, Nextcloud, ownCloud или частный сервер",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 11.sp
-                        )
-
-                        OutlinedTextField(
-                            value = webdavUrl,
-                            onValueChange = { webdavUrl = it },
-                            label = { Text("URL WebDAV сервера") },
-                            placeholder = { Text("https://webdav.yandex.ru/3xui_backup.json") },
-                            singleLine = true,
-                            shape = RoundedCornerShape(10.dp),
-                            textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace, fontSize = 11.sp),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            OutlinedTextField(
-                                value = webdavUser,
-                                onValueChange = { webdavUser = it },
-                                label = { Text("Логин") },
-                                singleLine = true,
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.weight(1f)
-                            )
-                            OutlinedTextField(
-                                value = webdavPass,
-                                onValueChange = { webdavPass = it },
-                                label = { Text("Пароль") },
-                                singleLine = true,
-                                shape = RoundedCornerShape(10.dp),
-                                visualTransformation = PasswordVisualTransformation(),
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                            Button(
-                                onClick = {
-                                    if (webdavUrl.isBlank()) {
-                                        Toast.makeText(context, "Укажите URL WebDAV", Toast.LENGTH_SHORT).show()
-                                        return@Button
-                                    }
-                                    isWebdavLoading = true
-                                    viewModel.uploadBackupToWebdav(webdavUrl, webdavUser, webdavPass) {
-                                        isWebdavLoading = false
-                                    }
-                                },
-                                enabled = !isWebdavLoading && webdavUrl.isNotBlank(),
-                                colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                if (isWebdavLoading) {
-                                    CircularProgressIndicator(color = Color.White, modifier = Modifier.size(16.dp))
-                                } else {
-                                    Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
-                                    Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Выгрузить", fontSize = 12.sp)
-                                }
-                            }
-
-                            OutlinedButton(
-                                onClick = {
-                                    if (webdavUrl.isBlank()) {
-                                        Toast.makeText(context, "Укажите URL WebDAV", Toast.LENGTH_SHORT).show()
-                                        return@OutlinedButton
-                                    }
-                                    isWebdavLoading = true
-                                    viewModel.restoreBackupFromWebdav(webdavUrl, webdavUser, webdavPass) {
-                                        isWebdavLoading = false
-                                    }
-                                },
-                                enabled = !isWebdavLoading && webdavUrl.isNotBlank(),
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Загрузить", fontSize = 12.sp)
-                            }
-                        }
-
-                        Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
-
-                        // C. Local File Export & Import
-                        Text(
-                            text = "Локальный файл JSON",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = "Сохранение и загрузка файла из памяти устройства",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 11.sp
-                        )
-
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Button(
-                                onClick = {
-                                    exportLauncher.launch("3xui_backup_${System.currentTimeMillis() / 1000}.json")
-                                },
-                                shape = RoundedCornerShape(10.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Сохранить", fontSize = 12.sp)
-                            }
-
-                            OutlinedButton(
-                                onClick = {
-                                    importLauncher.launch(arrayOf("application/json", "*/*"))
-                                },
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(Icons.Default.UploadFile, contentDescription = null, modifier = Modifier.size(16.dp))
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Восстановить", fontSize = 12.sp)
-                            }
-                        }
-
-                        OutlinedButton(
-                            onClick = {
-                                val json = viewModel.getBackupJson()
-                                val intent = Intent(Intent.ACTION_SEND).apply {
-                                    type = "text/plain"
-                                    putExtra(Intent.EXTRA_SUBJECT, "3x-ui Backup")
-                                    putExtra(Intent.EXTRA_TEXT, json)
-                                }
-                                context.startActivity(Intent.createChooser(intent, "Отправить / Поделиться"))
-                            },
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Поделиться бэкапом", fontSize = 12.sp)
                         }
                     }
                 }

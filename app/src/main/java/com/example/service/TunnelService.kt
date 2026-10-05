@@ -141,11 +141,11 @@ class TunnelService : Service() {
                         _tunnelState.value = _tunnelState.value.copy(
                             isRunning = true,
                             localPort = boundPort,
-                            statusMessage = "Активен :$boundPort ➔ ${config.sshHost}",
+                            statusMessage = "Активен ➔ ${config.name}",
                             isError = false,
                             startedAt = System.currentTimeMillis()
                         )
-                        updateNotification("SSH Проброс активен", ":$boundPort ➔ ${config.sshHost}:${config.sshPort}")
+                        updateNotification("3X-UI Туннель", "Активен: ${config.name}")
                         Log.i(TAG, "SSH Tunnel connected successfully on port $boundPort")
                     } else {
                         val errorMsg = result.exceptionOrNull()?.message ?: "Не удалось подключиться по SSH"

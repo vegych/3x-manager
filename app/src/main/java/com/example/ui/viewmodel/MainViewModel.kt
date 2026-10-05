@@ -186,53 +186,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private val _googleAccount = MutableStateFlow<com.google.android.gms.auth.api.signin.GoogleSignInAccount?>(null)
-    val googleAccount: StateFlow<com.google.android.gms.auth.api.signin.GoogleSignInAccount?> = _googleAccount.asStateFlow()
-
-    fun checkGoogleAccount(context: Context) {
-        _googleAccount.value = com.example.data.backup.GoogleDriveBackupManager.getLastSignedInAccount(context)
-    }
-
-    fun setGoogleAccount(account: com.google.android.gms.auth.api.signin.GoogleSignInAccount?) {
-        _googleAccount.value = account
-    }
-
-    fun uploadBackupToDrive(context: Context, onResult: (Result<String>) -> Unit) {
-        val account = _googleAccount.value
-        if (account == null) {
-            onResult(Result.failure(Exception("Сначала подключите Google Аккаунт")))
-            return
-        }
-        viewModelScope.launch {
-            val json = getBackupJson()
-            val res = com.example.data.backup.GoogleDriveBackupManager.uploadBackup(context, account, json)
-            if (res.isSuccess) {
-                _userMessage.emit("Бэкап синхронизирован с Google Диском")
-            } else {
-                _userMessage.emit(res.exceptionOrNull()?.message ?: "Ошибка Google Диска")
-            }
-            onResult(res)
-        }
-    }
-
-    fun restoreBackupFromDrive(context: Context, onResult: (Result<Int>) -> Unit) {
-        val account = _googleAccount.value
-        if (account == null) {
-            onResult(Result.failure(Exception("Сначала подключите Google Аккаунт")))
-            return
-        }
-        viewModelScope.launch {
-            val res = com.example.data.backup.GoogleDriveBackupManager.downloadBackup(context, account)
-            if (res.isSuccess) {
-                restoreBackup(res.getOrThrow(), onResult)
-            } else {
-                val error = res.exceptionOrNull() ?: Exception("Не удалось скачать бэкап с Google Диска")
-                _userMessage.emit(error.message ?: "Ошибка Google Диска")
-                onResult(Result.failure(error))
-            }
-        }
-    }
-
     private val _sortMode = MutableStateFlow(
         ServerSortMode.values().find { it.name == prefs.getString("server_sort_mode", ServerSortMode.BY_USAGE.name) }
             ?: ServerSortMode.BY_USAGE

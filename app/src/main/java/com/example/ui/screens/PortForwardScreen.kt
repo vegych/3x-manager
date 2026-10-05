@@ -511,7 +511,7 @@ fun TunnelConfigCard(
                             fontWeight = FontWeight.Bold
                         )
                         Text(
-                            text = if (tunnel.type == "SSH") "SSH Туннель (${tunnel.sshUser}@${tunnel.sshHost}:${tunnel.sshPort})"
+                            text = if (tunnel.type == "SSH") "SSH Туннель"
                             else "Локальный TCP Реле",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -543,15 +543,23 @@ fun TunnelConfigCard(
             Spacer(modifier = Modifier.height(8.dp))
 
             // Forward detail
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.fillMaxWidth()
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
                 Text(
-                    text = "Локальный порт: :${tunnel.localPort} (LAN: ${if (tunnel.bindToLan) "0.0.0.0" else "127.0.0.1"}) -> ${tunnel.remoteTargetHost}:${tunnel.remoteTargetPort}",
+                    text = "Маршрут: :${tunnel.localPort} ➔ ${tunnel.remoteTargetHost}:${tunnel.remoteTargetPort}",
                     style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 12.sp
+                    fontSize = 12.sp,
+                    softWrap = true
+                )
+                Text(
+                    text = if (tunnel.bindToLan) "Доступен в локальной сети (0.0.0.0)" else "Только на этом устройстве (127.0.0.1)",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = CyanPrimary,
+                    fontSize = 11.sp,
+                    softWrap = true
                 )
             }
 

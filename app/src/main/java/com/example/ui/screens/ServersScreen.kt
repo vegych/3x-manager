@@ -122,7 +122,7 @@ fun ServersScreen(
                 .padding(horizontal = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            item {
+            item(key = "header_sort") {
                 Spacer(modifier = Modifier.height(4.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -165,7 +165,11 @@ fun ServersScreen(
 
             // Компактная плашка активного туннеля с кнопкой отключения
             if (tunnelState?.isRunning == true) {
-                item {
+                item(key = "active_tunnel_banner") {
+                    val activeServerName = remember(servers, tunnelState, selectedServer) {
+                        val activeServer = servers.firstOrNull { it.id == tunnelState.configId || it.localPort == tunnelState.localPort } ?: selectedServer
+                        activeServer?.name ?: "Активен"
+                    }
                     Surface(
                         shape = RoundedCornerShape(12.dp),
                         color = RedAccent.copy(alpha = 0.08f),
@@ -179,7 +183,12 @@ fun ServersScreen(
                                 .fillMaxWidth()
                                 .padding(horizontal = 12.dp, vertical = 7.dp)
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .padding(end = 8.dp)
+                            ) {
                                 Box(
                                     modifier = Modifier
                                         .size(8.dp)
@@ -188,11 +197,13 @@ fun ServersScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Туннель активен (: ${tunnelState.localPort})",
-                                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                                    text = "Туннель: $activeServerName",
+                                    style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurface
+                                    color = MaterialTheme.colorScheme.onSurface,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             }
 
@@ -218,7 +229,7 @@ fun ServersScreen(
             }
 
             if (servers.isEmpty()) {
-                item {
+                item(key = "empty_servers") {
                     Card(
                         shape = RoundedCornerShape(18.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
@@ -267,7 +278,7 @@ fun ServersScreen(
                 )
             }
 
-            item {
+            item(key = "bottom_spacer") {
                 Spacer(modifier = Modifier.height(88.dp))
             }
         }
@@ -344,7 +355,7 @@ fun ServerCardSimple(
     }
     val displayEffectiveUrl = remember(server, maskIp) {
         if (server.useTunnel) {
-            "http://127.0.0.1:${server.localPort}${server.basePath}"
+            "SSH Проброс ➔ ${server.name}"
         } else {
             val maskedHost = com.example.ui.viewmodel.MainViewModel.maskIp(server.host, maskIp)
             val scheme = if (server.useHttps) "https" else "http"
@@ -413,7 +424,7 @@ fun ServerCardSimple(
                 }
             }
 
-            // Route summary (like Termius: localhost:2370 -> 185.184.***.***:2370)
+            // Route summary (clean intermediate host without raw ports)
             if (server.useTunnel && server.sshHost.isNotBlank()) {
                 Spacer(modifier = Modifier.height(10.dp))
                 Surface(
@@ -426,8 +437,8 @@ fun ServerCardSimple(
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
                         Text(
-                            text = "localhost:${server.localPort}",
-                            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                            text = "SSH Туннель",
+                            style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = CyanPrimary
                         )
@@ -440,7 +451,7 @@ fun ServerCardSimple(
                             tint = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = "${server.sshUser}@$displaySshHost:${server.sshPort}",
+                            text = "${server.sshUser}@$displaySshHost",
                             style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,

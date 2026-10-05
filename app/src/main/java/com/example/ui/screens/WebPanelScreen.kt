@@ -219,7 +219,7 @@ fun WebPanelScreen(
                         if (isTunnelRequired) {
                             Text(
                                 text = if (isTunnelRunning) {
-                                    if (displayHost.isNotBlank()) "Туннель ➔ $displayHost" else "Туннель"
+                                    server?.name?.let { "Туннель ➔ $it" } ?: "Туннель активен"
                                 } else if (isTunnelError) "Ошибка подключения"
                                 else "Подключение к SSH...",
                                 style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
@@ -410,7 +410,7 @@ fun WebPanelScreen(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    text = if (displayHost.isNotBlank()) "Туннель ➔ ${server?.sshUser}@$displayHost:${server?.sshPort}" else "Туннель ➔ ${server?.name}",
+                                    text = "Туннель ➔ ${server?.name ?: "Сервер"}",
                                     style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
                                     color = CyanPrimary,
                                     fontSize = 11.sp
