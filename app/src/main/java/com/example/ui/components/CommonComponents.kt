@@ -62,8 +62,7 @@ fun TermiusBadgeL(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .size(34.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(Color(0xFF3B3E54)),
+            .background(Color(0xFF3B3E54), RoundedCornerShape(8.dp)),
         contentAlignment = Alignment.Center
     ) {
         Text(

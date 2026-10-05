@@ -143,12 +143,10 @@ fun ServersScreen(
                         com.example.ui.viewmodel.ServerSortMode.values().forEach { mode ->
                             val isSelected = sortMode == mode
                             Surface(
+                                onClick = { onSortModeChange(mode) },
                                 shape = RoundedCornerShape(8.dp),
                                 color = if (isSelected) CyanPrimary.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
-                                border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, CyanPrimary) else null,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { onSortModeChange(mode) }
+                                border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, CyanPrimary) else null
                             ) {
                                 Text(
                                     text = mode.title,
@@ -165,7 +163,7 @@ fun ServersScreen(
 
             // Компактная плашка активного туннеля с кнопкой отключения
             if (tunnelState?.isRunning == true) {
-                item(key = "active_tunnel_banner") {
+                item(key = "active_tunnel_banner", contentType = "tunnel_banner") {
                     val activeServerName = remember(servers, tunnelState, selectedServer) {
                         val activeServer = servers.firstOrNull { it.id == tunnelState.configId || it.localPort == tunnelState.localPort } ?: selectedServer
                         activeServer?.name ?: "Активен"
@@ -229,7 +227,7 @@ fun ServersScreen(
             }
 
             if (servers.isEmpty()) {
-                item(key = "empty_servers") {
+                item(key = "empty_servers", contentType = "empty") {
                     Card(
                         shape = RoundedCornerShape(18.dp),
                         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
@@ -259,7 +257,11 @@ fun ServersScreen(
                 }
             }
 
-            items(servers, key = { it.id }) { server ->
+            items(
+                items = servers,
+                key = { it.id },
+                contentType = { "server_card" }
+            ) { server ->
                 val isSelected = selectedServer?.id == server.id
                 val isTunnelActive = tunnelState?.isRunning == true &&
                         (tunnelState.configId == server.id || tunnelState.localPort == server.localPort)
@@ -278,7 +280,7 @@ fun ServersScreen(
                 )
             }
 
-            item(key = "bottom_spacer") {
+            item(key = "bottom_spacer", contentType = "spacer") {
                 Spacer(modifier = Modifier.height(88.dp))
             }
         }
@@ -365,14 +367,14 @@ fun ServerCardSimple(
     }
 
     Card(
+        onClick = onSelect,
         shape = RoundedCornerShape(18.dp),
+        border = androidx.compose.foundation.BorderStroke(borderWidth, borderColor),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
         ),
         modifier = Modifier
             .fillMaxWidth()
-            .border(borderWidth, borderColor, RoundedCornerShape(18.dp))
-            .clickable { onSelect() }
             .testTag("server_card_${server.id}")
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
