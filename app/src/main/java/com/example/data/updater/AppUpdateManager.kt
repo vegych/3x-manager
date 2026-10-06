@@ -127,18 +127,30 @@ object AppUpdateManager {
     }
 
     /**
-     * Downloads APK via Android DownloadManager or browser
+     * Downloads APK via Android DownloadManager or browser with exact version naming
      */
-    fun startDownload(context: Context, downloadUrl: String, fileName: String = "3x-manager-update.apk") {
+    fun startDownload(context: Context, downloadUrl: String, versionName: String = "") {
         try {
             val downloadManager = context.getSystemService(Context.DOWNLOAD_SERVICE) as? DownloadManager
             if (downloadManager != null) {
                 val uri = Uri.parse(downloadUrl)
+                val urlFileName = downloadUrl.substringAfterLast("/").substringBefore("?").trim()
+                val targetFileName = if (urlFileName.endsWith(".apk", ignoreCase = true)) {
+                    urlFileName
+                } else if (versionName.isNotBlank()) {
+                    val cleanV = if (versionName.startsWith("v", ignoreCase = true)) versionName else "v$versionName"
+                    "3x-manager-$cleanV.apk"
+                } else {
+                    "3x-manager-update.apk"
+                }
+
+                val title = if (versionName.isNotBlank()) "3x manager $versionName" else "3x manager"
+
                 val request = DownloadManager.Request(uri)
-                    .setTitle("3x manager update")
-                    .setDescription("Загрузка новой версии...")
+                    .setTitle(title)
+                    .setDescription("Загрузка $targetFileName...")
                     .setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                    .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+                    .setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, targetFileName)
                     .setAllowedOverMetered(true)
                     .setAllowedOverRoaming(true)
 

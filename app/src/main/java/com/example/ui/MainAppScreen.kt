@@ -440,7 +440,7 @@ fun MainAppScreen(
                         onClick = {
                             viewModel.dismissUpdate()
                             if (!update.downloadUrl.isNullOrBlank()) {
-                                com.example.data.updater.AppUpdateManager.startDownload(context, update.downloadUrl)
+                                com.example.data.updater.AppUpdateManager.startDownload(context, update.downloadUrl, update.latestVersion)
                             } else {
                                 com.example.data.updater.AppUpdateManager.openBrowser(context, update.releasePageUrl)
                             }
