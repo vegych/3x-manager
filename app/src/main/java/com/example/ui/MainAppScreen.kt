@@ -34,6 +34,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.DarkMode
@@ -64,12 +65,10 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
-import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -84,7 +83,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -106,7 +104,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.ui.components.OpenTabsDrawerContent
+import com.example.ui.components.RightTabsDrawer
 import com.example.ui.i18n.AppLanguage
 import com.example.ui.i18n.RussianStrings
 import com.example.ui.i18n.Strings
@@ -136,7 +134,7 @@ fun MainAppScreen(
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    var isTabsDrawerOpen by remember { mutableStateOf(false) }
 
     var currentScreen by remember { mutableStateOf(ScreenState.SERVERS) }
     var webPanelUrl by remember { mutableStateOf("") }
@@ -155,63 +153,25 @@ fun MainAppScreen(
     val updateInfo by viewModel.updateInfo.collectAsStateWithLifecycle()
     val isCheckingUpdate by viewModel.isCheckingUpdate.collectAsStateWithLifecycle()
 
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    LaunchedEffect(Unit) {
-        viewModel.userMessage.collect { msg ->
-            snackbarHostState.showSnackbar(msg)
-        }
-    }
-
-    ModalNavigationDrawer(
-        drawerState = drawerState,
-        gesturesEnabled = openedServers.isNotEmpty(),
-        drawerContent = {
-            if (openedServers.isNotEmpty()) {
-                OpenTabsDrawerContent(
-                    openedServers = openedServers,
-                    selectedServer = selectedServer,
-                    tunnelState = tunnelState,
-                    maskIp = maskIp,
-                    strings = strings,
-                    onSelectServer = { server ->
-                        viewModel.selectServer(server, context)
-                        webPanelUrl = server.getEffectiveUrl()
-                        currentScreen = ScreenState.WEB_PANEL
-                        coroutineScope.launch { drawerState.close() }
-                    },
-                    onCloseTab = { server ->
-                        viewModel.closeServerTab(server, context)
-                        if (viewModel.openedServers.value.isEmpty()) {
-                            currentScreen = ScreenState.SERVERS
-                            coroutineScope.launch { drawerState.close() }
-                        }
-                    },
-                    onCloseAllTabs = {
-                        viewModel.closeAllServerTabs(context)
-                        currentScreen = ScreenState.SERVERS
-                        coroutineScope.launch { drawerState.close() }
-                    },
-                    onGoToHome = {
-                        currentScreen = ScreenState.SERVERS
-                        coroutineScope.launch { drawerState.close() }
-                    },
-                    onCloseDrawer = {
-                        coroutineScope.launch { drawerState.close() }
-                    }
-                )
-            }
-        },
-        modifier = modifier.fillMaxSize()
-    ) {
+    Box(modifier = modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
                 if (currentScreen == ScreenState.SERVERS) {
                     TopAppBar(
-                        navigationIcon = {
+                        title = {
+                            Text(
+                                text = strings.appName,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp,
+                                letterSpacing = (-0.5).sp
+                            )
+                        },
+                        actions = {
+                            // Кнопка открытых вкладок серверов (на правой стороне)
                             if (openedServers.isNotEmpty()) {
                                 IconButton(
-                                    onClick = { coroutineScope.launch { drawerState.open() } }
+                                    onClick = { isTabsDrawerOpen = true }
                                 ) {
                                     BadgedBox(
                                         badge = {
@@ -235,17 +195,7 @@ fun MainAppScreen(
                                     }
                                 }
                             }
-                        },
-                        title = {
-                            Text(
-                                text = strings.appName,
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 20.sp,
-                                letterSpacing = (-0.5).sp
-                            )
-                        },
-                        actions = {
+
                             // Компактная кнопка отключения туннелей прямо в основном меню
                             if (tunnelState.isRunning) {
                                 Surface(
@@ -305,7 +255,6 @@ fun MainAppScreen(
                     )
                 }
             },
-            snackbarHost = { SnackbarHost(snackbarHostState) },
             modifier = Modifier.fillMaxSize()
         ) { innerPadding ->
             Box(
@@ -358,7 +307,7 @@ fun MainAppScreen(
                                 selectedServer?.let { s -> viewModel.startTunnelForServer(s, context) }
                             },
                             onOpenDrawer = {
-                                coroutineScope.launch { drawerState.open() }
+                                isTabsDrawerOpen = true
                             },
                             onGoToServers = {
                                 viewModel.onLeavePanel(context)
@@ -369,6 +318,41 @@ fun MainAppScreen(
                 }
             }
         }
+
+        // Выезжающая панель открытых серверов со СПРАВА (открывается только по кнопке, жест вытягивания отключен)
+        RightTabsDrawer(
+            isOpen = isTabsDrawerOpen && openedServers.isNotEmpty(),
+            openedServers = openedServers,
+            selectedServer = selectedServer,
+            tunnelState = tunnelState,
+            maskIp = maskIp,
+            strings = strings,
+            onSelectServer = { server ->
+                viewModel.selectServer(server, context)
+                webPanelUrl = server.getEffectiveUrl()
+                currentScreen = ScreenState.WEB_PANEL
+                isTabsDrawerOpen = false
+            },
+            onCloseTab = { server ->
+                viewModel.closeServerTab(server, context)
+                if (viewModel.openedServers.value.isEmpty()) {
+                    currentScreen = ScreenState.SERVERS
+                    isTabsDrawerOpen = false
+                }
+            },
+            onCloseAllTabs = {
+                viewModel.closeAllServerTabs(context)
+                currentScreen = ScreenState.SERVERS
+                isTabsDrawerOpen = false
+            },
+            onGoToHome = {
+                currentScreen = ScreenState.SERVERS
+                isTabsDrawerOpen = false
+            },
+            onCloseDrawer = {
+                isTabsDrawerOpen = false
+            }
+        )
     }
 
     if (showSettingsDialog) {
@@ -533,10 +517,27 @@ fun SettingsDialog(
             .fillMaxWidth()
             .padding(horizontal = 16.dp),
         title = {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Settings, contentDescription = null, tint = CyanPrimary)
-                Spacer(modifier = Modifier.width(10.dp))
-                Text(strings.settingsTitle, fontWeight = FontWeight.Bold)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Default.Settings, contentDescription = null, tint = CyanPrimary)
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(strings.settingsTitle, fontWeight = FontWeight.Bold)
+                }
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier.size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Close,
+                        contentDescription = "Close",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         },
         text = {
@@ -1136,14 +1137,7 @@ fun SettingsDialog(
                 }
             }
         },
-        confirmButton = {
-            Button(
-                onClick = onDismiss,
-                shape = RoundedCornerShape(10.dp)
-            ) {
-                Text(strings.btnCancel)
-            }
-        }
+        confirmButton = {}
     )
 
     if (showChangelogDialog) {

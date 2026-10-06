@@ -62,10 +62,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _appLanguage.value = lang
         _strings.value = getAppStrings(lang)
         prefs.edit().putString("app_language", lang.name).apply()
-        viewModelScope.launch {
-            val msg = if (lang == AppLanguage.EN) "Language: English" else if (lang == AppLanguage.RU) "Язык: Русский" else "Язык: По умолчанию"
-            _userMessage.emit(msg)
-        }
     }
 
     companion object {
@@ -92,9 +88,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setThemeMode(mode: AppThemeMode) {
         _themeMode.value = mode
         prefs.edit().putString("app_theme_mode", mode.name).apply()
-        viewModelScope.launch {
-            _userMessage.emit("Тема оформления: ${mode.title}")
-        }
     }
 
     private val _maskIp = MutableStateFlow(prefs.getBoolean("mask_ip", false))
@@ -118,9 +111,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setClosePolicy(policy: TunnelClosePolicy) {
         _closePolicy.value = policy
         prefs.edit().putString("tunnel_close_policy", policy.name).apply()
-        viewModelScope.launch {
-            _userMessage.emit("Режим туннеля: ${policy.title}")
-        }
     }
 
     fun onLeavePanel(context: Context) {
@@ -296,13 +286,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (res.isSuccess) {
                 val info = res.getOrThrow()
                 _updateInfo.value = info
-                if (info.hasUpdate) {
-                    _userMessage.emit("Доступно обновление: ${info.latestVersion}!")
-                } else if (!silent) {
-                    _userMessage.emit("У вас установлена последняя версия (${info.currentVersion})")
-                }
-            } else if (!silent) {
-                _userMessage.emit(res.exceptionOrNull()?.message ?: "Не удалось проверить обновления")
             }
         }
     }
@@ -371,14 +354,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleServerTunnel(server: ServerEntity, context: Context) {
         if (tunnelState.value.isRunning && (tunnelState.value.configId == server.id || tunnelState.value.localPort == server.localPort)) {
             stopTunnel(context)
-            viewModelScope.launch {
-                _userMessage.emit("Туннель для «${server.name}» остановлен")
-            }
         } else {
             startTunnelForServer(server, context)
-            viewModelScope.launch {
-                _userMessage.emit("Запуск туннеля для «${server.name}»...")
-            }
         }
     }
 
@@ -415,19 +392,13 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             val activeTunnel = tunnelState.value
             val tunnelPort = if (activeTunnel.isRunning) activeTunnel.localPort else null
-            val ping = repository.pingServer(server, tunnelPort)
-            if (ping >= 0) {
-                _userMessage.emit("Пинг до ${server.name}: ${ping}мс")
-            } else {
-                _userMessage.emit("Сервер ${server.name} недоступен (таймаут)")
-            }
+            repository.pingServer(server, tunnelPort)
         }
     }
 
     fun saveServer(server: ServerEntity) {
         viewModelScope.launch {
             val id = repository.saveServer(server)
-            _userMessage.emit("Сервер \"${server.name}\" сохранен")
             if (_selectedServer.value?.id == id || _selectedServer.value == null) {
                 _selectedServer.value = server.copy(id = id)
                 refreshPanelData(server.copy(id = id))
@@ -438,7 +409,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun deleteServer(server: ServerEntity) {
         viewModelScope.launch {
             repository.deleteServer(server)
-            _userMessage.emit("Сервер \"${server.name}\" удален")
             if (_selectedServer.value?.id == server.id) {
                 _selectedServer.value = servers.value.firstOrNull { it.id != server.id }
             }
@@ -448,21 +418,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun setDefaultServer(server: ServerEntity) {
         viewModelScope.launch {
             repository.setDefaultServer(server.id)
-            _userMessage.emit("${server.name} установлен по умолчанию")
         }
     }
 
     fun saveTunnel(tunnel: TunnelConfigEntity) {
         viewModelScope.launch {
             repository.saveTunnel(tunnel)
-            _userMessage.emit("Конфиг проброса \"${tunnel.name}\" сохранен")
         }
     }
 
     fun deleteTunnel(tunnel: TunnelConfigEntity) {
         viewModelScope.launch {
             repository.deleteTunnel(tunnel)
-            _userMessage.emit("Конфиг \"${tunnel.name}\" удален")
         }
     }
 
@@ -488,7 +455,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val tunnelPort = if (activeTunnel.isRunning) activeTunnel.localPort else null
             val res = repository.restartXray(server, tunnelPort)
             _isLoading.value = false
-            _userMessage.emit(res.getOrNull()?.msg ?: "Служба Xray перезапущена")
             refreshPanelData(server)
         }
     }
@@ -501,7 +467,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             val tunnelPort = if (activeTunnel.isRunning) activeTunnel.localPort else null
             val res = repository.resetAllTraffics(server, tunnelPort)
             _isLoading.value = false
-            _userMessage.emit(res.getOrNull()?.msg ?: "Статистика трафика сброшена")
             refreshPanelData(server)
         }
     }
@@ -511,9 +476,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (it.id == inbound.id) it.copy(enable = !it.enable) else it
         }
         _inbounds.value = updated
-        viewModelScope.launch {
-            _userMessage.emit("Подключение #${inbound.id} ${if (!inbound.enable) "включено" else "выключено"}")
-        }
     }
 
     fun deleteInbound(inboundId: Int) {
@@ -525,7 +487,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             repository.deleteInbound(server, inboundId, tunnelPort)
             _inbounds.value = _inbounds.value.filter { it.id != inboundId }
             _isLoading.value = false
-            _userMessage.emit("Подключение удалено")
         }
     }
 
@@ -542,8 +503,5 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             total = 0L
         )
         _inbounds.value = listOf(newItem) + _inbounds.value
-        viewModelScope.launch {
-            _userMessage.emit("Подключение \"$remark\" добавлено")
-        }
     }
 }

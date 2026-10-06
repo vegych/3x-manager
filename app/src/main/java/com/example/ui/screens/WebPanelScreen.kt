@@ -200,36 +200,6 @@ fun WebPanelScreen(
                     Icon(Icons.Default.ArrowBack, contentDescription = "К серверам")
                 }
 
-                // Open tabs drawer button (Shown when there is at least 1 open tab)
-                if (openedServers.isNotEmpty()) {
-                    IconButton(
-                        onClick = { onOpenDrawer?.invoke() },
-                        modifier = Modifier.size(38.dp)
-                    ) {
-                        BadgedBox(
-                            badge = {
-                                Badge(
-                                    containerColor = CyanPrimary,
-                                    contentColor = Color.Black
-                                ) {
-                                    Text(
-                                        text = "${openedServers.size}",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                }
-                            }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Layers,
-                                contentDescription = strings.openTabsDrawerTooltip,
-                                tint = CyanPrimary,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    }
-                }
-
                 // Server title and live status dot
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -265,6 +235,36 @@ fun WebPanelScreen(
                                 color = if (isTunnelRunning) MintSecondary else if (isTunnelError) RedAccent else AmberAccent,
                                 fontSize = 10.sp,
                                 maxLines = 1
+                            )
+                        }
+                    }
+                }
+
+                // Open tabs drawer button on right side (Shown when there is at least 1 open tab)
+                if (openedServers.isNotEmpty()) {
+                    IconButton(
+                        onClick = { onOpenDrawer?.invoke() },
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        BadgedBox(
+                            badge = {
+                                Badge(
+                                    containerColor = CyanPrimary,
+                                    contentColor = Color.Black
+                                ) {
+                                    Text(
+                                        text = "${openedServers.size}",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Layers,
+                                contentDescription = strings.openTabsDrawerTooltip,
+                                tint = CyanPrimary,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
