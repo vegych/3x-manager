@@ -128,6 +128,15 @@ interface Strings {
     val btnDownloadInstall: String
     val btnLater: String
 
+    val openTabsTitle: String
+    val openTabsCount: (Int) -> String
+    val closeTabTooltip: String
+    val closeAllTabs: String
+    val allServersMenu: String
+    val currentActiveBadge: String
+    val noOpenTabs: String
+    val openTabsDrawerTooltip: String
+
     val msgServerSaved: (String) -> String
     val msgServerDeleted: (String) -> String
     val msgBackupRestored: (Int) -> String
@@ -172,7 +181,7 @@ object RussianStrings : Strings {
     override val addServerTitle = "Добавить сервер 3x-ui"
     override val editServerTitle = "Редактировать сервер"
     override val labelNameField = "Название (Label)"
-    override val labelNamePlaceholder = "local u1host"
+    override val labelNamePlaceholder = "Frankfurt Edge 01"
     override val panelUrlField = "Ссылка на панель (URL) *"
     override val panelUrlPlaceholder = "https://localhost:2370/secret/panel/"
     override val actionPaste = "Вставить"
@@ -268,6 +277,15 @@ object RussianStrings : Strings {
     override val btnDownloadInstall = "Скачать и установить"
     override val btnLater = "Позже"
 
+    override val openTabsTitle = "Открытые панели"
+    override val openTabsCount: (Int) -> String = { count -> "Открыто вкладок: $count" }
+    override val closeTabTooltip = "Закрыть вкладку"
+    override val closeAllTabs = "Закрыть все"
+    override val allServersMenu = "Главное меню (Все сервера)"
+    override val currentActiveBadge = "Активна"
+    override val noOpenTabs = "Нет открытых серверов"
+    override val openTabsDrawerTooltip = "Открытые серверы"
+
     override val msgServerSaved: (String) -> String = { name -> "Сервер «$name» сохранен" }
     override val msgServerDeleted: (String) -> String = { name -> "Сервер «$name» удален" }
     override val msgBackupRestored: (Int) -> String = { count -> "Восстановлено серверов: $count" }
@@ -304,7 +322,7 @@ object EnglishStrings : Strings {
     override val addServerTitle = "Add 3x-ui Server"
     override val editServerTitle = "Edit Server"
     override val labelNameField = "Server Name (Label)"
-    override val labelNamePlaceholder = "local u1host"
+    override val labelNamePlaceholder = "Frankfurt Edge 01"
     override val panelUrlField = "Panel URL *"
     override val panelUrlPlaceholder = "https://localhost:2370/secret/panel/"
     override val actionPaste = "Paste"
@@ -399,6 +417,15 @@ object EnglishStrings : Strings {
     }
     override val btnDownloadInstall = "Download & Install"
     override val btnLater = "Later"
+
+    override val openTabsTitle = "Active Panels"
+    override val openTabsCount: (Int) -> String = { count -> "Open tabs: $count" }
+    override val closeTabTooltip = "Close tab"
+    override val closeAllTabs = "Close all"
+    override val allServersMenu = "Main Menu (All Servers)"
+    override val currentActiveBadge = "Active"
+    override val noOpenTabs = "No open servers"
+    override val openTabsDrawerTooltip = "Open servers"
 
     override val msgServerSaved: (String) -> String = { name -> "Server \"$name\" saved" }
     override val msgServerDeleted: (String) -> String = { name -> "Server \"$name\" deleted" }

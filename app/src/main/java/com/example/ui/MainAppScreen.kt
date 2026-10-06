@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.DarkMode
 import androidx.compose.material.icons.filled.FolderShared
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.RadioButtonChecked
@@ -55,16 +56,20 @@ import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
+import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -79,12 +84,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -99,6 +106,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.ui.components.OpenTabsDrawerContent
 import com.example.ui.i18n.AppLanguage
 import com.example.ui.i18n.RussianStrings
 import com.example.ui.i18n.Strings
@@ -111,6 +119,7 @@ import com.example.ui.theme.RedAccent
 import com.example.ui.viewmodel.AppThemeMode
 import com.example.ui.viewmodel.MainViewModel
 import com.example.ui.viewmodel.TunnelClosePolicy
+import kotlinx.coroutines.launch
 import java.io.BufferedReader
 import java.io.InputStreamReader
 
@@ -126,12 +135,16 @@ fun MainAppScreen(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+
     var currentScreen by remember { mutableStateOf(ScreenState.SERVERS) }
     var webPanelUrl by remember { mutableStateOf("") }
     var showSettingsDialog by remember { mutableStateOf(false) }
 
     val servers by viewModel.servers.collectAsStateWithLifecycle()
     val selectedServer by viewModel.selectedServer.collectAsStateWithLifecycle()
+    val openedServers by viewModel.openedServers.collectAsStateWithLifecycle()
     val tunnelState by viewModel.tunnelState.collectAsStateWithLifecycle()
     val closePolicy by viewModel.closePolicy.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
@@ -150,135 +163,209 @@ fun MainAppScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            if (currentScreen == ScreenState.SERVERS) {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = strings.appName,
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 20.sp,
-                            letterSpacing = (-0.5).sp
-                        )
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        gesturesEnabled = openedServers.isNotEmpty(),
+        drawerContent = {
+            if (openedServers.isNotEmpty()) {
+                OpenTabsDrawerContent(
+                    openedServers = openedServers,
+                    selectedServer = selectedServer,
+                    tunnelState = tunnelState,
+                    maskIp = maskIp,
+                    strings = strings,
+                    onSelectServer = { server ->
+                        viewModel.selectServer(server, context)
+                        webPanelUrl = server.getEffectiveUrl()
+                        currentScreen = ScreenState.WEB_PANEL
+                        coroutineScope.launch { drawerState.close() }
                     },
-                    actions = {
-                        // Компактная кнопка отключения туннелей прямо в основном меню
-                        if (tunnelState.isRunning) {
-                            Surface(
-                                onClick = { viewModel.stopTunnel(context) },
-                                shape = RoundedCornerShape(10.dp),
-                                color = RedAccent.copy(alpha = 0.15f),
-                                border = BorderStroke(1.dp, RedAccent.copy(alpha = 0.45f)),
-                                modifier = Modifier.padding(end = 4.dp)
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(6.dp)
-                                            .clip(androidx.compose.foundation.shape.CircleShape)
-                                            .background(MintSecondary)
-                                    )
-                                    Spacer(modifier = Modifier.width(5.dp))
-                                    Icon(
-                                        imageVector = Icons.Default.PowerSettingsNew,
-                                        contentDescription = strings.disconnectButton,
-                                        tint = RedAccent,
-                                        modifier = Modifier.size(13.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                    Text(
-                                        text = strings.stopShort,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = RedAccent,
-                                        fontSize = 11.sp
-                                    )
-                                }
-                            }
-                        }
-
-                        IconButton(onClick = { viewModel.toggleMaskIp() }) {
-                            Icon(
-                                imageVector = if (maskIp) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = if (maskIp) strings.maskIpTitle else strings.maskIpTitle,
-                                tint = if (maskIp) CyanPrimary else MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                        IconButton(onClick = { showSettingsDialog = true }) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = strings.settingsTitle
-                            )
+                    onCloseTab = { server ->
+                        viewModel.closeServerTab(server, context)
+                        if (viewModel.openedServers.value.isEmpty()) {
+                            currentScreen = ScreenState.SERVERS
+                            coroutineScope.launch { drawerState.close() }
                         }
                     },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface,
-                        titleContentColor = MaterialTheme.colorScheme.onSurface
-                    )
+                    onCloseAllTabs = {
+                        viewModel.closeAllServerTabs(context)
+                        currentScreen = ScreenState.SERVERS
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                    onGoToHome = {
+                        currentScreen = ScreenState.SERVERS
+                        coroutineScope.launch { drawerState.close() }
+                    },
+                    onCloseDrawer = {
+                        coroutineScope.launch { drawerState.close() }
+                    }
                 )
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         modifier = modifier.fillMaxSize()
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            when (currentScreen) {
-                ScreenState.SERVERS -> {
-                    ServersScreen(
-                        servers = servers,
-                        selectedServer = selectedServer,
-                        tunnelState = tunnelState,
-                        maskIp = maskIp,
-                        sortMode = sortMode,
-                        strings = strings,
-                        onSortModeChange = { viewModel.setSortMode(it) },
-                        onStopTunnel = { viewModel.stopTunnel(context) },
-                        onSelectServer = { server ->
-                            viewModel.selectServer(server, context)
-                            webPanelUrl = server.getEffectiveUrl()
-                            currentScreen = ScreenState.WEB_PANEL
+    ) {
+        Scaffold(
+            topBar = {
+                if (currentScreen == ScreenState.SERVERS) {
+                    TopAppBar(
+                        navigationIcon = {
+                            if (openedServers.isNotEmpty()) {
+                                IconButton(
+                                    onClick = { coroutineScope.launch { drawerState.open() } }
+                                ) {
+                                    BadgedBox(
+                                        badge = {
+                                            Badge(
+                                                containerColor = CyanPrimary,
+                                                contentColor = Color.Black
+                                            ) {
+                                                Text(
+                                                    text = "${openedServers.size}",
+                                                    fontSize = 10.sp,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Layers,
+                                            contentDescription = strings.openTabsDrawerTooltip,
+                                            tint = CyanPrimary
+                                        )
+                                    }
+                                }
+                            }
                         },
-                        onSaveServer = { server ->
-                            viewModel.saveServer(server)
+                        title = {
+                            Text(
+                                text = strings.appName,
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 20.sp,
+                                letterSpacing = (-0.5).sp
+                            )
                         },
-                        onDeleteServer = { server ->
-                            viewModel.deleteServer(server)
-                        }
+                        actions = {
+                            // Компактная кнопка отключения туннелей прямо в основном меню
+                            if (tunnelState.isRunning) {
+                                Surface(
+                                    onClick = { viewModel.stopTunnel(context) },
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = RedAccent.copy(alpha = 0.15f),
+                                    border = BorderStroke(1.dp, RedAccent.copy(alpha = 0.45f)),
+                                    modifier = Modifier.padding(end = 4.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(6.dp)
+                                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                                .background(MintSecondary)
+                                        )
+                                        Spacer(modifier = Modifier.width(5.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.PowerSettingsNew,
+                                            contentDescription = strings.disconnectButton,
+                                            tint = RedAccent,
+                                            modifier = Modifier.size(13.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = strings.stopShort,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = RedAccent,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+                            }
+
+                            IconButton(onClick = { viewModel.toggleMaskIp() }) {
+                                Icon(
+                                    imageVector = if (maskIp) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = if (maskIp) strings.maskIpTitle else strings.maskIpTitle,
+                                    tint = if (maskIp) CyanPrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                            IconButton(onClick = { showSettingsDialog = true }) {
+                                Icon(
+                                    imageVector = Icons.Default.Settings,
+                                    contentDescription = strings.settingsTitle
+                                )
+                            }
+                        },
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surface,
+                            titleContentColor = MaterialTheme.colorScheme.onSurface
+                        )
                     )
                 }
-
-                ScreenState.WEB_PANEL -> {
-                    val targetUrl = if (tunnelState.isRunning) {
-                        val path = selectedServer?.let { if (it.basePath.isNotBlank()) "/${it.basePath.trim('/')}" else "" } ?: ""
-                        val scheme = if (selectedServer?.useHttps == true) "https" else "http"
-                        "$scheme://127.0.0.1:${tunnelState.localPort}$path"
-                    } else {
-                        selectedServer?.getEffectiveUrl() ?: ""
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) },
+            modifier = Modifier.fillMaxSize()
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
+                when (currentScreen) {
+                    ScreenState.SERVERS -> {
+                        ServersScreen(
+                            servers = servers,
+                            selectedServer = selectedServer,
+                            tunnelState = tunnelState,
+                            maskIp = maskIp,
+                            sortMode = sortMode,
+                            strings = strings,
+                            onSortModeChange = { viewModel.setSortMode(it) },
+                            onStopTunnel = { viewModel.stopTunnel(context) },
+                            onSelectServer = { server ->
+                                viewModel.openServerTab(server, context)
+                                webPanelUrl = server.getEffectiveUrl()
+                                currentScreen = ScreenState.WEB_PANEL
+                            },
+                            onSaveServer = { server ->
+                                viewModel.saveServer(server)
+                            },
+                            onDeleteServer = { server ->
+                                viewModel.deleteServer(server)
+                            }
+                        )
                     }
 
-                    WebPanelScreen(
-                        initialUrl = if (webPanelUrl.isNotBlank()) webPanelUrl else targetUrl,
-                        server = selectedServer,
-                        tunnelState = tunnelState,
-                        maskIp = maskIp,
-                        strings = strings,
-                        onStartTunnel = {
-                            selectedServer?.let { s -> viewModel.startTunnelForServer(s, context) }
-                        },
-                        onGoToServers = {
-                            viewModel.onLeavePanel(context)
-                            currentScreen = ScreenState.SERVERS
+                    ScreenState.WEB_PANEL -> {
+                        val targetUrl = if (tunnelState.isRunning) {
+                            val path = selectedServer?.let { if (it.basePath.isNotBlank()) "/${it.basePath.trim('/')}" else "" } ?: ""
+                            val scheme = if (selectedServer?.useHttps == true) "https" else "http"
+                            "$scheme://127.0.0.1:${tunnelState.localPort}$path"
+                        } else {
+                            selectedServer?.getEffectiveUrl() ?: ""
                         }
-                    )
+
+                        WebPanelScreen(
+                            initialUrl = if (webPanelUrl.isNotBlank()) webPanelUrl else targetUrl,
+                            server = selectedServer,
+                            tunnelState = tunnelState,
+                            openedServers = openedServers,
+                            maskIp = maskIp,
+                            strings = strings,
+                            onStartTunnel = {
+                                selectedServer?.let { s -> viewModel.startTunnelForServer(s, context) }
+                            },
+                            onOpenDrawer = {
+                                coroutineScope.launch { drawerState.open() }
+                            },
+                            onGoToServers = {
+                                viewModel.onLeavePanel(context)
+                                currentScreen = ScreenState.SERVERS
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -727,61 +814,88 @@ fun SettingsDialog(
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
                             modifier = Modifier.fillMaxWidth()
                         ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(
-                                            text = strings.versionPrefix,
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Icon(
+                                            imageVector = Icons.Default.CloudDownload,
+                                            contentDescription = null,
+                                            tint = CyanPrimary,
+                                            modifier = Modifier.size(20.dp)
                                         )
+                                        Spacer(modifier = Modifier.width(8.dp))
                                         Text(
-                                            text = "v${com.example.BuildConfig.VERSION_NAME}",
+                                            text = "${strings.appName} • ${strings.versionPrefix} v${com.example.BuildConfig.VERSION_NAME}",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.Bold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { showChangelogDialog = true },
+                                        shape = RoundedCornerShape(10.dp),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(38.dp)
+                                    ) {
+                                        Text(
+                                            text = strings.changelogTitle,
                                             style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
                                         )
                                     }
 
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                    Button(
+                                        onClick = { viewModel.checkForAppUpdates(silent = false) },
+                                        enabled = !isCheckingUpdate,
+                                        colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
+                                        shape = RoundedCornerShape(10.dp),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 6.dp),
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(38.dp)
                                     ) {
-                                        OutlinedButton(
-                                            onClick = { showChangelogDialog = true },
-                                            shape = RoundedCornerShape(8.dp),
-                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                            modifier = Modifier.height(34.dp)
-                                        ) {
-                                            Text(strings.changelogTitle, style = MaterialTheme.typography.labelSmall)
-                                        }
-
-                                        Button(
-                                            onClick = { viewModel.checkForAppUpdates(silent = false) },
-                                            enabled = !isCheckingUpdate,
-                                            colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
-                                            shape = RoundedCornerShape(8.dp),
-                                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                            modifier = Modifier.height(34.dp)
-                                        ) {
-                                            if (isCheckingUpdate) {
-                                                CircularProgressIndicator(
-                                                    modifier = Modifier.size(14.dp),
-                                                    strokeWidth = 2.dp,
-                                                    color = Color.White
-                                                )
-                                            } else {
-                                                Icon(
-                                                    imageVector = Icons.Default.Sync,
-                                                    contentDescription = null,
-                                                    modifier = Modifier.size(14.dp)
-                                                )
-                                                Spacer(modifier = Modifier.width(4.dp))
-                                                Text(strings.btnCheckUpdates, style = MaterialTheme.typography.labelSmall, color = Color.White)
-                                            }
+                                        if (isCheckingUpdate) {
+                                            CircularProgressIndicator(
+                                                modifier = Modifier.size(16.dp),
+                                                strokeWidth = 2.dp,
+                                                color = Color.White
+                                            )
+                                        } else {
+                                            Icon(
+                                                imageVector = Icons.Default.Sync,
+                                                contentDescription = null,
+                                                modifier = Modifier.size(15.dp),
+                                                tint = Color.White
+                                            )
+                                            Spacer(modifier = Modifier.width(4.dp))
+                                            Text(
+                                                text = strings.btnCheckUpdates,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color.White,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
                                         }
                                     }
                                 }

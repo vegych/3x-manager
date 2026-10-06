@@ -26,6 +26,24 @@ It is tailored for hardened server setups where the 3x-ui web panel is bound str
 
 ---
 
+### 📱 Application Screenshots & Capabilities
+
+<div align="center">
+
+| 1. Main Server List & Termius Cards | 2. 3x-ui Web Panel & Dual View |
+|:---:|:---:|
+| <img src="https://raw.githubusercontent.com/vegych/3x-ui-manager/main/docs/screenshots/screen_main.png" alt="Main Servers Screen" width="340" onerror="this.src='https://placehold.co/360x780/12131A/00E5FF?text=1.+Main+Server+List+Screen\\n•+Termius-Style+Cards\\n•+IP+Concealment+1-Tap\\n•+Auto+Port-Forwarding\\n•+Open+Tabs+Badge'"/> | <img src="https://raw.githubusercontent.com/vegych/3x-ui-manager/main/docs/screenshots/screen_webpanel.png" alt="Web Configurator Screen" width="340" onerror="this.src='https://placehold.co/360x780/12131A/00E5FF?text=2.+3x-ui+Web+Panel\\n•+Desktop+1280px+Mode\\n•+Mobile+Mode+Toggle\\n•+1-Click+Auto-Login\\n•+Fast+Page+Reload'"/> |
+| **Server Overview & Fast Access**<br>• Termius-style cards with direct **Open** action<br>• 1-Tap IP masking (`203.0.113.***`) for privacy<br>• Tunnel status indicator & disconnect button<br>• Active tabs counter on the top bar | **Embedded 3x-ui Configurator**<br>• Full Desktop 1280px layout with sidebar & charts<br>• Instant switch to adaptive Mobile mode<br>• Automatic credential injection & login<br>• Real-time SSH tunnel status indicator |
+
+| 3. Slide-Out Left Tabs Drawer | 4. Settings, Backup & Themes |
+|:---:|:---:|
+| <img src="https://raw.githubusercontent.com/vegych/3x-ui-manager/main/docs/screenshots/screen_tabs_drawer.png" alt="Open Tabs Drawer" width="340" onerror="this.src='https://placehold.co/360x780/12131A/00E5FF?text=3.+Open+Tabs+Drawer\\n•+Multi-Panel+Switching\\n•+Active+Status+Badges\\n•+Individual+Tab+Close\\n•+Close+All+Action'"/> | <img src="https://raw.githubusercontent.com/vegych/3x-ui-manager/main/docs/screenshots/screen_settings.png" alt="Settings and Backup Dialog" width="340" onerror="this.src='https://placehold.co/360x780/12131A/00E5FF?text=4.+Settings+%26+Backup\\n•+Multi-Language+(Auto/RU/EN)\\n•+Themes+(Dark/Light/System)\\n•+WebDAV+%26+JSON+Backup\\n•+In-App+Auto-Updater'"/> |
+| **Multi-Server Tab Switching**<br>• Slide-out drawer from left on any screen<br>• Active server highlight with status dots<br>• Quick individual tab close button (`✕`)<br>• One-click **Close All** and Home shortcuts | **Settings & Cloud Sync**<br>• Language switcher (**Auto / RU / EN**)<br>• Material 3 Themes (**Dark, Light, System**)<br>• WebDAV Cloud (Nextcloud/Yandex Disk) & JSON<br>• In-App GitHub Releases Auto-Updater |
+
+</div>
+
+---
+
 ### ✨ Key Features
 
 #### 🛡️ Automated SSH Tunneling & Port Forwarding
@@ -37,9 +55,14 @@ It is tailored for hardened server setups where the 3x-ui web panel is bound str
   - *Keep in background*: Runs a continuous background tunnel until manually disconnected.
 - **Android Foreground Service**: Prevents system termination and maintains stable connection state.
 
+#### 📑 Multi-Tab Left Navigation Drawer
+- **Dynamic Tab Counter**: Appears automatically whenever at least one server is open.
+- **Seamless Switching**: Switch between multiple open server dashboards on the fly without exiting to the main menu.
+- **Tab Management**: Close individual server sessions or close all active tabs in 1 tap.
+
 #### 🌐 Built-in 3x-ui Web Client
 - **One-Click Auto-Login**: Automatically fills credentials and signs into the 3x-ui dashboard.
-- **Desktop (1280px) & Mobile Modes**: Switch instantly between full desktop PC layout (with side navigation, charts, and table views) and mobile layout.
+- **Desktop (1280px) & Mobile Modes**: Switch instantly between full desktop PC layout (with side navigation, charts, and table views) and mobile layout for all servers.
 - **Optimized WebView Engine**: Fast page load times, session cookie persistence, and smooth gesture navigation.
 
 #### 👁️ Privacy & IP Masking
@@ -52,7 +75,7 @@ It is tailored for hardened server setups where the 3x-ui web panel is bound str
 
 #### ⚡ High Performance & Ergonomics
 - **60 / 120 FPS Fluid Scrolling**: Optimized Jetpack Compose lazy lists with zero layout lag and fast rendering.
-- **Multi-language Support**: Full English and Russian interface with auto system locale detection.
+- **Multi-language Support**: Full English and Russian interface with auto system locale detection and in-app switcher.
 - **Material Design 3**: Dynamic themes (Dark, Light, System) with smooth transitions.
 
 #### 🔄 Auto-Updater
@@ -80,8 +103,8 @@ It is tailored for hardened server setups where the 3x-ui web panel is bound str
 #### Build Commands
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/3x-manager.git
-cd 3x-manager
+git clone https://github.com/vegych/3x-ui-manager.git
+cd 3x-ui-manager
 
 # Build Release APK
 ./gradlew assembleRelease
@@ -104,6 +127,24 @@ The resulting APK will be generated at:
 
 ---
 
+### 📱 Скриншоты и возможности приложения
+
+<div align="center">
+
+| 1. Главный экран и карточки серверов | 2. Веб-панель 3x-ui (Режимы ПК и Мобильный) |
+|:---:|:---:|
+| <img src="https://raw.githubusercontent.com/vegych/3x-ui-manager/main/docs/screenshots/screen_main.png" alt="Главный экран серверов" width="340" onerror="this.src='https://placehold.co/360x780/12131A/00E5FF?text=1.+Главный+экран+серверов\\n•+Карточки+в+стиле+Termius\\n•+Скрытие+IP+в+1+клик\\n•+Автопроброс+портов\\n•+Счетчик+открытых+вкладок'"/> | <img src="https://raw.githubusercontent.com/vegych/3x-ui-manager/main/docs/screenshots/screen_webpanel.png" alt="Веб-конфигуратор 3x-ui" width="340" onerror="this.src='https://placehold.co/360x780/12131A/00E5FF?text=2.+Веб-панель+3x-ui\\n•+Режим+ПК+1280px\\n•+Мобильный+режим\\n•+Автологин+в+1+клик\\n•+Быстрое+обновление'"/> |
+| **Список серверов и быстрый доступ**<br>• Компактные карточки Termius с кнопкой **«Открыть»**<br>• Скрытие IP-адресов в 1 клик (`203.0.113.***`)<br>• Статус туннеля и быстрая кнопка отключения<br>• Счетчик открытых вкладок в шапке | **Встроенный конфигуратор 3x-ui**<br>• Полноэкранный режим ПК (1280px) с сайдбаром и графиками<br>• Мгновенное переключение в адаптивный мобильный режим<br>• Автоматическая авторизация (логин и пароль)<br>• Индикатор статуса SSH-туннеля в реальном времени |
+
+| 3. Выезжающее меню открытых вкладок | 4. Настройки, облачный бэкап и темы |
+|:---:|:---:|
+| <img src="https://raw.githubusercontent.com/vegych/3x-ui-manager/main/docs/screenshots/screen_tabs_drawer.png" alt="Меню открытых вкладок" width="340" onerror="this.src='https://placehold.co/360x780/12131A/00E5FF?text=3.+Боковое+меню+вкладок\\n•+Быстрое+переключение\\n•+Индикаторы+активности\\n•+Закрытие+вкладок+(✕)\\n•+Кнопка+Закрыть+все'"/> | <img src="https://raw.githubusercontent.com/vegych/3x-ui-manager/main/docs/screenshots/screen_settings.png" alt="Настройки и Бэкап" width="340" onerror="this.src='https://placehold.co/360x780/12131A/00E5FF?text=4.+Настройки+и+Бэкап\\n•+Языки+(Auto/RU/EN)\\n•+Темы+(Темная/Светлая/Система)\\n•+WebDAV+и+JSON+бэкап\\n•+Автообновление+GitHub'"/> |
+| **Быстрое переключение между серверами**<br>• Выезжающее слева меню на любом экране<br>• Подсветка активного сервера и статусные точки<br>• Удобное закрытие конкретной вкладки (`✕`)<br>• Кнопка **«Закрыть все»** и возврат в главное меню | **Настройки и Синхронизация**<br>• Переключение языка (**Auto / RU / EN**)<br>• Темы оформления (**Темная, Светлая, Системная**)<br>• Облако WebDAV (Nextcloud, Яндекс Диск) и JSON<br>• Встроенная проверка обновлений с GitHub |
+
+</div>
+
+---
+
 ### ✨ Ключевые возможности
 
 #### 🛡️ Безопасность и SSH-туннелирование
@@ -115,11 +156,17 @@ The resulting APK will be generated at:
   - *Держать в фоне* — туннель работает постоянно до ручного отключения.
 - **Foreground Service**: Стабильная работа SSH-туннеля в фоне без выгрузки системой Android.
 
+#### 📑 Вкладки открытых серверов (Боковое меню)
+- **Счетчик открытых серверов**: Автоматически появляется в шапке при открытии хотя бы одного сервера.
+- **Быстрое переключение**: Удобный переход между открытыми панелями 3x-ui без необходимости возвращаться в общий список серверов.
+- **Управление сессиями**: Закрытие выбранных вкладок или завершение всех сессий в один клик.
+
 #### 🌐 Встроенный веб-клиент 3x-ui
 - **Авторизация в один клик (Auto-login)**: Автоматическая подстановка логина и пароля в форму входа 3x-ui.
 - **Режимы ПК (1280px) и Мобильный**:
   - Полноэкранный режим ПК (1280px) с развернутым левым сайдбаром, верхним меню и графиками нагрузки.
   - Адаптивный мобильный режим для небольших экранов.
+  - Доступно для всех серверов (как с туннелем, так и при прямом подключении).
 - **Умная навигация**: Поддержка системных жестов «Назад», быстрое обновление страницы и безопасное управление сессионными Cookie.
 
 #### 👁️ Приватность (Скрытие IP)
@@ -160,8 +207,8 @@ The resulting APK will be generated at:
 #### Команды Gradle
 ```bash
 # Клонировать репозиторий
-git clone https://github.com/your-username/3x-manager.git
-cd 3x-manager
+git clone https://github.com/vegych/3x-ui-manager.git
+cd 3x-ui-manager
 
 # Сборка релизного APK
 ./gradlew assembleRelease

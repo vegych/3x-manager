@@ -36,9 +36,12 @@ import androidx.compose.material.icons.filled.ArrowForward
 import androidx.compose.material.icons.filled.DesktopWindows
 import androidx.compose.material.icons.filled.Dns
 import androidx.compose.material.icons.filled.ErrorOutline
+import androidx.compose.material.icons.filled.Layers
 import androidx.compose.material.icons.filled.PhoneAndroid
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.VpnLock
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -87,10 +90,12 @@ fun WebPanelScreen(
     initialUrl: String,
     server: ServerEntity? = null,
     tunnelState: ActiveTunnelState? = null,
+    openedServers: List<ServerEntity> = emptyList(),
     maskIp: Boolean = false,
     strings: Strings = RussianStrings,
     onStartTunnel: (() -> Unit)? = null,
     onGoToServers: (() -> Unit)? = null,
+    onOpenDrawer: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -109,6 +114,7 @@ fun WebPanelScreen(
     val isTunnelRunning = tunnelState?.isRunning == true
     val isTunnelError = tunnelState?.isError == true
     val isConnecting = isTunnelRequired && !isTunnelRunning && !isTunnelError
+    val canShowControls = !isTunnelRequired || isTunnelRunning
 
     val displayHost = remember(server?.sshHost, maskIp) {
         server?.sshHost?.let { com.example.ui.viewmodel.MainViewModel.maskIp(it, maskIp) } ?: ""
@@ -194,6 +200,36 @@ fun WebPanelScreen(
                     Icon(Icons.Default.ArrowBack, contentDescription = "К серверам")
                 }
 
+                // Open tabs drawer button (Shown when there is at least 1 open tab)
+                if (openedServers.isNotEmpty()) {
+                    IconButton(
+                        onClick = { onOpenDrawer?.invoke() },
+                        modifier = Modifier.size(38.dp)
+                    ) {
+                        BadgedBox(
+                            badge = {
+                                Badge(
+                                    containerColor = CyanPrimary,
+                                    contentColor = Color.Black
+                                ) {
+                                    Text(
+                                        text = "${openedServers.size}",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Layers,
+                                contentDescription = strings.openTabsDrawerTooltip,
+                                tint = CyanPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+
                 // Server title and live status dot
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
@@ -234,7 +270,7 @@ fun WebPanelScreen(
                     }
                 }
 
-                if (isTunnelRunning) {
+                if (canShowControls) {
                     IconButton(
                         onClick = {
                             val newMode = !isDesktopMode
@@ -282,7 +318,7 @@ fun WebPanelScreen(
                     ) {
                         Icon(
                             imageVector = if (isDesktopMode) Icons.Default.DesktopWindows else Icons.Default.PhoneAndroid,
-                            contentDescription = if (isDesktopMode) "Переключить на мобильную версию" else "Переключить на полную версию",
+                            contentDescription = if (isDesktopMode) strings.mobileModeTooltip else strings.desktopModeTooltip,
                             tint = if (isDesktopMode) CyanPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.size(20.dp)
                         )
@@ -292,14 +328,14 @@ fun WebPanelScreen(
                         onClick = { webViewInstance?.reload() },
                         modifier = Modifier.size(36.dp)
                     ) {
-                        Icon(Icons.Default.Refresh, contentDescription = "Обновить", modifier = Modifier.size(20.dp))
+                        Icon(Icons.Default.Refresh, contentDescription = strings.reloadTooltip, modifier = Modifier.size(20.dp))
                     }
                 }
             }
         }
 
         // Slim 2dp loading indicator
-        if (isLoading && isTunnelRunning) {
+        if (isLoading && canShowControls) {
             LinearProgressIndicator(
                 progress = { pageProgress },
                 color = CyanPrimary,

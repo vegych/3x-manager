@@ -242,6 +242,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _selectedServer = MutableStateFlow<ServerEntity?>(null)
     val selectedServer: StateFlow<ServerEntity?> = _selectedServer.asStateFlow()
 
+    private val _openedServers = MutableStateFlow<List<ServerEntity>>(emptyList())
+    val openedServers: StateFlow<List<ServerEntity>> = _openedServers.asStateFlow()
+
     private val _serverStatus = MutableStateFlow<ServerStatusObj?>(null)
     val serverStatus: StateFlow<ServerStatusObj?> = _serverStatus.asStateFlow()
 
@@ -310,6 +313,15 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectServer(server: ServerEntity, context: Context? = null) {
         _selectedServer.value = server
+        // Add to opened servers list if not present or update it
+        val currentList = _openedServers.value
+        val exists = currentList.any { it.id == server.id }
+        if (!exists) {
+            _openedServers.value = currentList + server
+        } else {
+            _openedServers.value = currentList.map { if (it.id == server.id) server else it }
+        }
+
         viewModelScope.launch {
             repository.recordServerUsage(server.id)
         }
@@ -321,6 +333,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             }
         }
         refreshPanelData(server)
+    }
+
+    fun openServerTab(server: ServerEntity, context: Context? = null) {
+        selectServer(server, context)
+    }
+
+    fun closeServerTab(server: ServerEntity, context: Context? = null) {
+        val remaining = _openedServers.value.filter { it.id != server.id }
+        _openedServers.value = remaining
+        if (_selectedServer.value?.id == server.id) {
+            if (remaining.isNotEmpty()) {
+                val nextServer = remaining.last()
+                selectServer(nextServer, context)
+            } else {
+                _selectedServer.value = null
+                if (context != null && _closePolicy.value != TunnelClosePolicy.NEVER) {
+                    stopTunnel(context)
+                }
+            }
+        }
+    }
+
+    fun closeAllServerTabs(context: Context? = null) {
+        _openedServers.value = emptyList()
+        _selectedServer.value = null
+        if (context != null && _closePolicy.value != TunnelClosePolicy.NEVER) {
+            stopTunnel(context)
+        }
     }
 
     fun startTunnelForServer(server: ServerEntity, context: Context) {
