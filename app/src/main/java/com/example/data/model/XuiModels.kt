@@ -101,3 +101,18 @@ data class ParsedClient(
     val expiryTime: Long = 0L,
     val subId: String = ""
 )
+
+@JsonClass(generateAdapter = true)
+data class PanelUpdateInfoResponse(
+    @Json(name = "success") val success: Boolean = false,
+    @Json(name = "msg") val msg: String = "",
+    @Json(name = "obj") val obj: PanelUpdateInfoObj? = null
+)
+
+@JsonClass(generateAdapter = true)
+data class PanelUpdateInfoObj(
+    @Json(name = "channel") val channel: String = "",
+    @Json(name = "currentVersion") val currentVersion: String = "",
+    @Json(name = "latestVersion") val latestVersion: String = "",
+    @Json(name = "updateAvailable") val updateAvailable: Boolean = false
+)

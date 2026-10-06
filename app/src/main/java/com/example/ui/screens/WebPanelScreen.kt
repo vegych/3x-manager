@@ -96,6 +96,7 @@ fun WebPanelScreen(
     onStartTunnel: (() -> Unit)? = null,
     onGoToServers: (() -> Unit)? = null,
     onOpenDrawer: (() -> Unit)? = null,
+    onPanelVersionDetected: ((String) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -584,6 +585,22 @@ fun WebPanelScreen(
                                                 })();
                                             """.trimIndent()
                                             view?.evaluateJavascript(autoLoginScript, null)
+                                        }
+
+                                        // Auto-detect 3x-ui panel version from page DOM/window
+                                        val versionDetectScript = """
+                                            (function() {
+                                                return window.X_UI_CUR_VER || 
+                                                       (document.querySelector('.ant-layout-header')?.innerText || '').match(/v\d+\.\d+\.\d+/)?.[0] ||
+                                                       (document.body?.innerText || '').match(/3[Xx]-[Uu][Ii]\s+v?(\d+\.\d+\.\d+)/i)?.[1] ||
+                                                       '';
+                                            })();
+                                        """.trimIndent()
+                                        view?.evaluateJavascript(versionDetectScript) { res ->
+                                            val clean = res?.trim('"', '\'', ' ') ?: ""
+                                            if (clean.isNotBlank() && clean != "null" && clean != "undefined") {
+                                                onPanelVersionDetected?.invoke(clean)
+                                            }
                                         }
                                     }
 

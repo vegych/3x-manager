@@ -129,6 +129,16 @@ interface Strings {
     val btnDownloadBrowser: String
     val btnLater: String
 
+    val panelUpdateBadge: (String) -> String
+    val panelUpdateDialogTitle: String
+    val panelCurrentVersionLabel: String
+    val panelLatestVersionLabel: String
+    val panelServerLabel: String
+    val panelUpdateCommandTitle: String
+    val btnOpenGitHubReleases: String
+    val btnCopyCommand: String
+    val msgCommandCopied: String
+
     val openTabsTitle: String
     val openTabsCount: (Int) -> String
     val closeTabTooltip: String
@@ -279,6 +289,16 @@ object RussianStrings : Strings {
     override val btnDownloadBrowser = "Скачать через браузер"
     override val btnLater = "Позже"
 
+    override val panelUpdateBadge: (String) -> String = { ver -> "3x-ui $ver" }
+    override val panelUpdateDialogTitle = "Обновление панели 3x-ui"
+    override val panelCurrentVersionLabel = "Текущая версия на сервере"
+    override val panelLatestVersionLabel = "Доступная версия на GitHub"
+    override val panelServerLabel = "Сервер"
+    override val panelUpdateCommandTitle = "Команда для обновления на сервере"
+    override val btnOpenGitHubReleases = "Открыть GitHub Releases"
+    override val btnCopyCommand = "Скопировать команду"
+    override val msgCommandCopied = "Команда обновления скопирована в буфер"
+
     override val openTabsTitle = "Открытые панели"
     override val openTabsCount: (Int) -> String = { count -> "Открыто вкладок: $count" }
     override val closeTabTooltip = "Закрыть вкладку"
@@ -420,6 +440,16 @@ object EnglishStrings : Strings {
     override val btnDownloadInstall = "Download & Install"
     override val btnDownloadBrowser = "Download in Browser"
     override val btnLater = "Later"
+
+    override val panelUpdateBadge: (String) -> String = { ver -> "3x-ui $ver" }
+    override val panelUpdateDialogTitle = "3x-ui Panel Update"
+    override val panelCurrentVersionLabel = "Installed on server"
+    override val panelLatestVersionLabel = "Latest on GitHub"
+    override val panelServerLabel = "Server"
+    override val panelUpdateCommandTitle = "Update command on server"
+    override val btnOpenGitHubReleases = "Open GitHub Releases"
+    override val btnCopyCommand = "Copy command"
+    override val msgCommandCopied = "Update command copied to clipboard"
 
     override val openTabsTitle = "Active Panels"
     override val openTabsCount: (Int) -> String = { count -> "Open tabs: $count" }

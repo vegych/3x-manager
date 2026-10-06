@@ -234,4 +234,30 @@ class XuiApiClient {
             Result.failure(e)
         }
     }
+
+    suspend fun getPanelUpdateInfo(baseUrl: String): Result<com.example.data.model.PanelUpdateInfoResponse> = withContext(Dispatchers.IO) {
+        try {
+            val url = buildUrl(baseUrl, "server/getPanelUpdateInfo")
+            val request = Request.Builder()
+                .url(url)
+                .get()
+                .header("Accept", "application/json")
+                .build()
+
+            val response = okHttpClient.newCall(request).execute()
+            val body = response.body?.string() ?: ""
+
+            if (!response.isSuccessful) {
+                return@withContext Result.failure(Exception("HTTP ${response.code}: $body"))
+            }
+
+            val adapter = moshi.adapter(com.example.data.model.PanelUpdateInfoResponse::class.java)
+            val parsed = adapter.fromJson(body)
+                ?: return@withContext Result.failure(Exception("Failed to parse panel update info"))
+
+            Result.success(parsed)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }

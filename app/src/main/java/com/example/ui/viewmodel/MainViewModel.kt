@@ -253,6 +253,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _updateInfo = MutableStateFlow<com.example.data.updater.UpdateInfo?>(null)
     val updateInfo: StateFlow<com.example.data.updater.UpdateInfo?> = _updateInfo.asStateFlow()
 
+    private val _panelUpdateInfo = MutableStateFlow<com.example.data.updater.PanelUpdateInfo?>(null)
+    val panelUpdateInfo: StateFlow<com.example.data.updater.PanelUpdateInfo?> = _panelUpdateInfo.asStateFlow()
+
+    private val _isCheckingPanelUpdate = MutableStateFlow(false)
+    val isCheckingPanelUpdate: StateFlow<Boolean> = _isCheckingPanelUpdate.asStateFlow()
+
     private val _isCheckingUpdate = MutableStateFlow(false)
     val isCheckingUpdate: StateFlow<Boolean> = _isCheckingUpdate.asStateFlow()
 
@@ -268,6 +274,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             updateLanIp()
             kotlinx.coroutines.delay(2000)
             checkForAppUpdates(silent = true)
+            _selectedServer.value?.let { checkPanelUpdates(it) }
         }
 
         viewModelScope.launch {
@@ -275,6 +282,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 if (_selectedServer.value == null && def != null) {
                     _selectedServer.value = def
                     refreshPanelData(def)
+                    checkPanelUpdates(def)
                 }
             }
         }
@@ -282,6 +290,33 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun updateLanIp() {
         _lanIp.value = NetworkUtils.getLocalIpAddress()
+    }
+
+    fun checkPanelUpdates(server: ServerEntity? = _selectedServer.value, onComplete: ((Boolean) -> Unit)? = null) {
+        val target = server ?: return
+        viewModelScope.launch {
+            _isCheckingPanelUpdate.value = true
+            val activeTunnel = tunnelState.value
+            val effectiveTunnelPort = if (activeTunnel.isRunning && (activeTunnel.configId == target.id || activeTunnel.localPort == target.localPort)) {
+                activeTunnel.localPort
+            } else null
+
+            val info = com.example.data.updater.PanelUpdateManager.checkPanelUpdates(target, effectiveTunnelPort)
+            _panelUpdateInfo.value = info
+            _isCheckingPanelUpdate.value = false
+            onComplete?.invoke(info.hasUpdate)
+        }
+    }
+
+    fun onPanelVersionDetected(server: ServerEntity, detectedVersion: String) {
+        viewModelScope.launch {
+            val info = com.example.data.updater.PanelUpdateManager.onPanelVersionDetected(server, detectedVersion)
+            _panelUpdateInfo.value = info
+        }
+    }
+
+    fun dismissPanelUpdate() {
+        _panelUpdateInfo.value = null
     }
 
     fun checkForAppUpdates(silent: Boolean = false, onComplete: ((Boolean) -> Unit)? = null) {
@@ -414,6 +449,9 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (inboundsRes.isSuccess) {
                 _inbounds.value = inboundsRes.getOrNull() ?: emptyList()
             }
+
+            // Check 3x-ui panel version updates
+            checkPanelUpdates(target)
 
             _isLoading.value = false
         }

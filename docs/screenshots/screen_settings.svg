@@ -1,118 +1,178 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 1440" width="720" height="1440">
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 1680" width="800" height="1680">
   <defs>
-    <linearGradient id="bgDim" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#08090E"/>
-      <stop offset="100%" stop-color="#0E1017"/>
-    </linearGradient>
-    <linearGradient id="dialogGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#191C29"/>
-      <stop offset="100%" stop-color="#141620"/>
-    </linearGradient>
-    <linearGradient id="cyanGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-      <stop offset="0%" stop-color="#00E5FF"/>
-      <stop offset="100%" stop-color="#00B0FF"/>
-    </linearGradient>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&amp;family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap');
+      * {
+        box-sizing: border-box;
+      }
+      .font-sans {
+        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      }
+      .font-mono {
+        font-family: 'JetBrains Mono', 'SF Mono', Menlo, Consolas, Monaco, monospace;
+      }
+    </style>
+    <filter id="shadow-card" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="shadow-dialog" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="16" stdDeviation="24" flood-color="#000000" flood-opacity="0.6"/>
+    </filter>
+    <filter id="shadow-fab" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-color="#1677FF" flood-opacity="0.4"/>
+    </filter>
   </defs>
 
-  <rect width="720" height="1440" fill="url(#bgDim)" opacity="0.95"/>
+  <!-- Deep Slate Background -->
+  <rect width="800" height="1680" fill="#0E141E"/>
 
-  <!-- Modal Settings Dialog -->
-  <g transform="translate(36, 120)">
-    <rect width="648" height="1200" rx="28" fill="url(#dialogGrad)" stroke="#2B3045" stroke-width="2"/>
+  <!-- Status Bar (48px) -->
+  <g class="font-sans">
+    <text x="44" y="34" fill="#FFFFFF" font-size="18" font-weight="700">09:41</text>
+    <!-- Wi-Fi & Cellular -->
+    <g transform="translate(680, 18)" fill="#FFFFFF">
+      <path d="M0,18 L4,18 L4,22 L0,22 Z M6,14 L10,14 L10,22 L6,22 Z M12,9 L16,9 L16,22 L12,22 Z M18,4 L22,4 L22,22 L18,22 Z"/>
+    </g>
+    <!-- Battery 100% -->
+    <g transform="translate(718, 19)">
+      <rect x="0" y="3" width="28" height="15" rx="3.5" fill="none" stroke="#FFFFFF" stroke-width="2"/>
+      <rect x="3" y="6" width="18" height="9" rx="2" fill="#52C41A"/>
+      <rect x="29" y="8" width="2.5" height="5" rx="1" fill="#FFFFFF"/>
+    </g>
+  </g>
 
-    <!-- Dialog Header with Top-Right Close Cross -->
-    <g transform="translate(32, 45)">
-      <circle cx="16" cy="16" r="16" fill="#00E5FF" fill-opacity="0.2"/>
-      <circle cx="16" cy="16" r="6" fill="#00E5FF"/>
-      <text x="46" y="24" fill="#FFFFFF" font-family="sans-serif" font-size="28" font-weight="bold">Настройки</text>
+  <!-- Body Content -->
+  
+  <!-- Dimmed Main Screen Background behind Scrim -->
+  <g opacity="0.35">
+    <rect y="48" width="800" height="96" fill="#161E2C"/>
+    <rect x="32" y="180" width="736" height="58" fill="#FF4D4F" fill-opacity="0.1" rx="14"/>
+    <rect x="32" y="260" width="736" height="248" fill="#161E2C" rx="20"/>
+  </g>
 
-      <!-- Top Right (✕) -->
-      <g transform="translate(540, 0)">
-        <circle cx="18" cy="18" r="18" fill="#262A3C"/>
-        <path d="M12,12 L24,24 M24,12 L12,24" stroke="#FFFFFF" stroke-width="2.5"/>
+  <!-- Dark Scrim Overlay (Black 70%) -->
+  <rect width="800" height="1680" fill="#000000" fill-opacity="0.7"/>
+
+  <!-- ================= CENTERED FLOATING ALERT DIALOG ================= -->
+  <g transform="translate(40, 160)" filter="url(#shadow-dialog)">
+    <rect width="720" height="1360" rx="24" fill="#161E2C" stroke="#253247" stroke-width="1.5"/>
+
+    <!-- Dialog Header with Top-Right Close Cross (✕) -->
+    <g transform="translate(32, 36)">
+      <circle cx="18" cy="18" r="16" fill="#1677FF" fill-opacity="0.18"/>
+      <circle cx="18" cy="18" r="6" fill="none" stroke="#1677FF" stroke-width="2.2"/>
+      <text x="46" y="26" class="font-sans" fill="#FFFFFF" font-size="22" font-weight="800">Настройки</text>
+
+      <!-- Top-Right Close (✕) Cross Button -->
+      <g transform="translate(620, 0)">
+        <circle cx="18" cy="18" r="18" fill="#1F293B"/>
+        <path d="M11,11 L25,25 M25,11 L11,25" stroke="#8C9BA5" stroke-width="2.2" stroke-linecap="round"/>
       </g>
     </g>
 
-    <!-- Tabs: [Общие] | [Бэкап] -->
-    <g transform="translate(32, 100)">
-      <rect width="285" height="50" rx="12" fill="#00E5FF" fill-opacity="0.2" stroke="#00E5FF" stroke-width="1.5"/>
-      <text x="142" y="132" fill="#00E5FF" font-family="sans-serif" font-size="18" font-weight="bold" text-anchor="middle">⚙️ Общие</text>
+    <!-- TabRow: [⚙️ Общие] | [💾 Резервная копия] (y=88) -->
+    <g transform="translate(32, 92)">
+      <rect width="656" height="52" fill="#161E2C"/>
+      
+      <!-- Tab 0: Общие (Selected) -->
+      <text x="164" y="32" class="font-sans" fill="#1677FF" font-size="16" font-weight="800" text-anchor="middle">⚙️ Общие</text>
+      <rect x="32" y="48" width="264" height="3.5" fill="#1677FF"/>
 
-      <rect x="295" width="285" height="50" rx="12" fill="#1E2232"/>
-      <text x="437" y="132" fill="#9CA3AF" font-family="sans-serif" font-size="18" text-anchor="middle">☁️ Бэкап и WebDAV</text>
+      <!-- Tab 1: Резервная копия (Unselected) -->
+      <text x="492" y="32" class="font-sans" fill="#8C9BA5" font-size="16" font-weight="500" text-anchor="middle">💾 Резервная копия</text>
+      <line x1="0" y1="50" x2="656" y2="50" stroke="#253247" stroke-width="1"/>
     </g>
 
-    <!-- 1. Tunnel Lifecycle Policy -->
-    <g transform="translate(32, 180)">
-      <rect width="584" height="160" rx="18" fill="#1C2030" stroke="#262A3C" stroke-width="1"/>
-      <text x="24" y="38" fill="#FFFFFF" font-family="sans-serif" font-size="20" font-weight="bold">Режим закрытия туннеля</text>
-      <text x="24" y="66" fill="#9CA3AF" font-family="sans-serif" font-size="15">Как туннель завершает работу при навигации</text>
+    <!-- ================= 1. Language Selection Cards ================= -->
+    <g transform="translate(32, 174)" class="font-sans">
+      <text x="0" y="16" fill="#8C9BA5" font-size="14" font-weight="700">Язык оформления</text>
 
-      <rect x="24" y="90" width="536" height="50" rx="10" fill="#252A3E" stroke="#00E5FF" stroke-width="1.2"/>
-      <text x="44" y="122" fill="#00E5FF" font-family="sans-serif" font-size="16" font-weight="bold">Закрывать при выходе из приложения ▾</text>
+      <!-- 3 Cards: Auto, RU (selected), EN -->
+      <!-- Auto -->
+      <rect x="0" y="30" width="208" height="58" rx="14" fill="#1F293B" fill-opacity="0.45"/>
+      <text x="104" y="65" fill="#8C9BA5" font-size="15" font-weight="500" text-anchor="middle">Auto</text>
+
+      <!-- RU (Selected) -->
+      <rect x="224" y="30" width="208" height="58" rx="14" fill="#1677FF" fill-opacity="0.18" stroke="#1677FF" stroke-width="1.5"/>
+      <text x="328" y="65" fill="#1677FF" font-size="15" font-weight="800" text-anchor="middle">RU (Русский)</text>
+
+      <!-- EN -->
+      <rect x="448" y="30" width="208" height="58" rx="14" fill="#1F293B" fill-opacity="0.45"/>
+      <text x="552" y="65" fill="#8C9BA5" font-size="15" font-weight="500" text-anchor="middle">EN (English)</text>
     </g>
 
-    <!-- 2. Language Picker -->
-    <g transform="translate(32, 360)">
-      <rect width="584" height="140" rx="18" fill="#1C2030" stroke="#262A3C" stroke-width="1"/>
-      <text x="24" y="38" fill="#FFFFFF" font-family="sans-serif" font-size="20" font-weight="bold">Язык приложения / Language</text>
+    <!-- ================= 2. Theme Selection Cards ================= -->
+    <g transform="translate(32, 292)" class="font-sans">
+      <text x="0" y="16" fill="#8C9BA5" font-size="14" font-weight="700">Тема приложения</text>
 
-      <rect x="24" y="65" width="165" height="50" rx="10" fill="#00E5FF" fill-opacity="0.2" stroke="#00E5FF" stroke-width="1.5"/>
-      <text x="106" y="96" fill="#00E5FF" font-family="sans-serif" font-size="16" font-weight="bold" text-anchor="middle">🇷🇺 Русский</text>
+      <!-- 3 Cards: Темная (selected), Светлая, Системная -->
+      <!-- Темная (Selected) -->
+      <rect x="0" y="30" width="208" height="58" rx="14" fill="#1677FF" fill-opacity="0.18" stroke="#1677FF" stroke-width="1.5"/>
+      <text x="104" y="65" fill="#1677FF" font-size="15" font-weight="800" text-anchor="middle">🌙 Темная</text>
 
-      <rect x="205" y="65" width="165" height="50" rx="10" fill="#252A3E"/>
-      <text x="287" y="96" fill="#9CA3AF" font-family="sans-serif" font-size="16" text-anchor="middle">🇬🇧 English</text>
+      <!-- Светлая -->
+      <rect x="224" y="30" width="208" height="58" rx="14" fill="#1F293B" fill-opacity="0.45"/>
+      <text x="328" y="65" fill="#8C9BA5" font-size="15" font-weight="500" text-anchor="middle">☀️ Светлая</text>
 
-      <rect x="385" y="65" width="175" height="50" rx="10" fill="#252A3E"/>
-      <text x="472" y="96" fill="#9CA3AF" font-family="sans-serif" font-size="16" text-anchor="middle">🌐 Авто (Система)</text>
+      <!-- Системная -->
+      <rect x="448" y="30" width="208" height="58" rx="14" fill="#1F293B" fill-opacity="0.45"/>
+      <text x="552" y="65" fill="#8C9BA5" font-size="15" font-weight="500" text-anchor="middle">⚙️ Система</text>
     </g>
 
-    <!-- 3. Theme Selector -->
-    <g transform="translate(32, 520)">
-      <rect width="584" height="140" rx="18" fill="#1C2030" stroke="#262A3C" stroke-width="1"/>
-      <text x="24" y="38" fill="#FFFFFF" font-family="sans-serif" font-size="20" font-weight="bold">Тема оформления (Material 3)</text>
+    <!-- ================= 3. SSH Tunnel Lifecycle Policy ================= -->
+    <g transform="translate(32, 410)" class="font-sans">
+      <rect width="656" height="136" rx="16" fill="#1F293B" fill-opacity="0.4" stroke="#253247" stroke-width="1.2"/>
+      <text x="20" y="32" fill="#FFFFFF" font-size="15" font-weight="700">Режим закрытия туннеля</text>
+      <text x="20" y="52" fill="#8C9BA5" font-size="13">Управляет поведением SSH-соединения при навигации</text>
 
-      <rect x="24" y="65" width="165" height="50" rx="10" fill="#00E5FF" fill-opacity="0.2" stroke="#00E5FF" stroke-width="1.5"/>
-      <text x="106" y="96" fill="#00E5FF" font-family="sans-serif" font-size="16" font-weight="bold" text-anchor="middle">🌙 Темная</text>
-
-      <rect x="205" y="65" width="165" height="50" rx="10" fill="#252A3E"/>
-      <text x="287" y="96" fill="#9CA3AF" font-family="sans-serif" font-size="16" text-anchor="middle">☀️ Светлая</text>
-
-      <rect x="385" y="65" width="175" height="50" rx="10" fill="#252A3E"/>
-      <text x="472" y="96" fill="#9CA3AF" font-family="sans-serif" font-size="16" text-anchor="middle">⚙️ Системная</text>
+      <!-- Dropdown Field -->
+      <rect x="20" y="68" width="616" height="48" rx="10" fill="#161E2C" stroke="#1677FF" stroke-width="1.2"/>
+      <text x="36" y="98" fill="#1677FF" font-size="15" font-weight="700">Закрывать при выходе из приложения</text>
+      <text x="604" y="98" fill="#1677FF" font-size="14">▾</text>
     </g>
 
-    <!-- 4. WebDAV Cloud Sync Card -->
-    <g transform="translate(32, 680)">
-      <rect width="584" height="230" rx="18" fill="#1C2030" stroke="#00E5FF" stroke-opacity="0.3" stroke-width="1.2"/>
-      <text x="24" y="38" fill="#FFFFFF" font-family="sans-serif" font-size="20" font-weight="bold">Синхронизация WebDAV</text>
-      <text x="24" y="64" fill="#9CA3AF" font-family="sans-serif" font-size="14">Яндекс Диск, Nextcloud или собственный сервер</text>
+    <!-- ================= 4. WebDAV Cloud Sync Preview ================= -->
+    <g transform="translate(32, 574)" class="font-sans">
+      <rect width="656" height="236" rx="16" fill="#1F293B" fill-opacity="0.4" stroke="#253247" stroke-width="1.2"/>
+      <text x="20" y="34" fill="#FFFFFF" font-size="15" font-weight="700">Синхронизация с WebDAV (Яндекс Диск / Nextcloud)</text>
+      <text x="20" y="54" fill="#8C9BA5" font-size="13">Резервная копия зашифрована и сохраняется в облако</text>
 
-      <rect x="24" y="85" width="536" height="50" rx="10" fill="#141722" stroke="#2B3045" stroke-width="1"/>
-      <text x="44" y="116" fill="#FFFFFF" font-family="monospace" font-size="15">https://webdav.yandex.ru/backup.json</text>
+      <rect x="20" y="74" width="616" height="46" rx="10" fill="#161E2C" stroke="#253247" stroke-width="1.2"/>
+      <text x="36" y="102" class="font-mono" fill="#FFFFFF" font-size="13">https://webdav.yandex.ru/backup.json</text>
 
-      <g transform="translate(24, 150)">
-        <rect width="255" height="52" rx="12" fill="url(#cyanGrad)"/>
-        <text x="127" y="183" fill="#000000" font-family="sans-serif" font-size="16" font-weight="bold" text-anchor="middle">☁️ Выгрузить</text>
+      <!-- WebDAV Buttons -->
+      <g transform="translate(20, 142)">
+        <rect width="300" height="48" rx="12" fill="#1677FF"/>
+        <text x="150" y="30" fill="#FFFFFF" font-size="15" font-weight="700" text-anchor="middle">☁️ Выгрузить на WebDAV</text>
 
-        <rect x="275" width="260" height="52" rx="12" fill="#252A3E" stroke="#00E5FF" stroke-width="1.2"/>
-        <text x="405" y="183" fill="#00E5FF" font-family="sans-serif" font-size="16" font-weight="bold" text-anchor="middle">⬇️ Восстановить</text>
+        <rect x="316" y="0" width="300" height="48" rx="12" fill="#161E2C" stroke="#1677FF" stroke-width="1.2"/>
+        <text x="466" y="30" fill="#1677FF" font-size="15" font-weight="700" text-anchor="middle">⬇️ Восстановить</text>
       </g>
     </g>
 
-    <!-- 5. App Version & Updates -->
-    <g transform="translate(32, 930)">
-      <rect width="584" height="150" rx="18" fill="#1C2030" stroke="#262A3C" stroke-width="1"/>
-      <text x="24" y="38" fill="#FFFFFF" font-family="sans-serif" font-size="20" font-weight="bold">3x manager • Версия v1.1.0</text>
-      <text x="24" y="64" fill="#00E676" font-family="sans-serif" font-size="14">У вас установлена актуальная версия</text>
+    <!-- ================= 5. App Version & Updates Card ================= -->
+    <g transform="translate(32, 836)" class="font-sans">
+      <rect width="656" height="156" rx="16" fill="#1F293B" fill-opacity="0.4" stroke="#253247" stroke-width="1.2"/>
+      
+      <circle cx="34" cy="34" r="14" fill="#1677FF" fill-opacity="0.18"/>
+      <path d="M28,34 L33,39 L41,27" stroke="#1677FF" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+      <text x="58" y="39" fill="#FFFFFF" font-size="18" font-weight="800">3x manager • Версия v1.1.0</text>
+      <text x="58" y="60" fill="#52C41A" font-size="13" font-weight="600">У вас установлена актуальная версия (v1.1.0)</text>
 
-      <g transform="translate(24, 80)">
-        <rect width="255" height="48" rx="10" fill="#252A3E" stroke="#2B3045" stroke-width="1"/>
-        <text x="127" y="110" fill="#FFFFFF" font-family="sans-serif" font-size="15" text-anchor="middle">История версий</text>
+      <g transform="translate(20, 84)">
+        <!-- Outlined Changelog Button -->
+        <rect width="300" height="48" rx="12" fill="#161E2C" stroke="#253247" stroke-width="1.2"/>
+        <text x="150" y="30" fill="#FFFFFF" font-size="14" font-weight="600" text-anchor="middle">История изменений</text>
 
-        <rect x="275" width="260" height="48" rx="10" fill="url(#cyanGrad)"/>
-        <text x="405" y="110" fill="#000000" font-family="sans-serif" font-size="15" font-weight="bold" text-anchor="middle">⟳ Проверить обновления</text>
+        <!-- Filled Check Updates Button -->
+        <rect x="316" y="0" width="300" height="48" rx="12" fill="#1677FF"/>
+        <text x="466" y="30" fill="#FFFFFF" font-size="14" font-weight="700" text-anchor="middle">⟳ Проверить обновления</text>
       </g>
     </g>
   </g>
+
+
+  <!-- Android Bottom Gesture Navigation Pill -->
+  <rect x="290" y="1656" width="220" height="5" rx="2.5" fill="#FFFFFF" fill-opacity="0.45"/>
 </svg>
