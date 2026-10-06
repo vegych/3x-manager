@@ -68,6 +68,7 @@ import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -139,6 +140,8 @@ fun MainAppScreen(
     var currentScreen by remember { mutableStateOf(ScreenState.SERVERS) }
     var webPanelUrl by remember { mutableStateOf("") }
     var showSettingsDialog by remember { mutableStateOf(false) }
+    var showUpdateDialog by remember { mutableStateOf(false) }
+    var showChangelogDialog by remember { mutableStateOf(false) }
 
     val servers by viewModel.servers.collectAsStateWithLifecycle()
     val selectedServer by viewModel.selectedServer.collectAsStateWithLifecycle()
@@ -152,6 +155,8 @@ fun MainAppScreen(
     val sortMode by viewModel.sortMode.collectAsStateWithLifecycle()
     val updateInfo by viewModel.updateInfo.collectAsStateWithLifecycle()
     val isCheckingUpdate by viewModel.isCheckingUpdate.collectAsStateWithLifecycle()
+    val isDownloadingUpdate by viewModel.isDownloadingUpdate.collectAsStateWithLifecycle()
+    val downloadProgress by viewModel.downloadProgress.collectAsStateWithLifecycle()
 
     Box(modifier = modifier.fillMaxSize()) {
         Scaffold(
@@ -234,6 +239,37 @@ fun MainAppScreen(
                                 }
                             }
 
+                            // Кнопка новой версии (размещена слева от глаза скрытия IP)
+                            if (updateInfo?.hasUpdate == true) {
+                                Surface(
+                                    onClick = { showUpdateDialog = true },
+                                    shape = RoundedCornerShape(10.dp),
+                                    color = CyanPrimary.copy(alpha = 0.18f),
+                                    border = BorderStroke(1.dp, CyanPrimary.copy(alpha = 0.65f)),
+                                    modifier = Modifier.padding(end = 4.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.CloudDownload,
+                                            contentDescription = null,
+                                            tint = CyanPrimary,
+                                            modifier = Modifier.size(14.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text(
+                                            text = updateInfo?.latestVersion ?: "",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            color = CyanPrimary,
+                                            fontSize = 11.sp
+                                        )
+                                    }
+                                }
+                            }
+
                             IconButton(onClick = { viewModel.toggleMaskIp() }) {
                                 Icon(
                                     imageVector = if (maskIp) Icons.Default.VisibilityOff else Icons.Default.Visibility,
@@ -241,6 +277,7 @@ fun MainAppScreen(
                                     tint = if (maskIp) CyanPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
+
                             IconButton(onClick = { showSettingsDialog = true }) {
                                 Icon(
                                     imageVector = Icons.Default.Settings,
@@ -367,80 +404,293 @@ fun MainAppScreen(
             onSelectTheme = { mode -> viewModel.setThemeMode(mode) },
             onSelectLanguage = { lang -> viewModel.setAppLanguage(lang) },
             onStopTunnel = { viewModel.stopTunnel(context) },
+            onOpenUpdateDialog = {
+                showSettingsDialog = false
+                showUpdateDialog = true
+            },
             onDismiss = { showSettingsDialog = false }
         )
     }
 
-    // Диалог авто-обновления приложения с GitHub Releases
-    updateInfo?.let { update ->
-        if (update.hasUpdate) {
-            AlertDialog(
-                onDismissRequest = { viewModel.dismissUpdate() },
-                icon = { Icon(Icons.Default.CloudDownload, contentDescription = null, tint = CyanPrimary) },
-                title = { Text(strings.updateAvailableTitle, fontWeight = FontWeight.Bold) },
-                text = {
-                    Column(
-                        verticalArrangement = Arrangement.spacedBy(10.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(
-                            text = "${strings.versionPrefix} ${update.latestVersion} (у вас ${update.currentVersion})",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.Bold,
-                            color = CyanPrimary
-                        )
+    // Диалог авто-обновления приложения с GitHub Releases (открывается по клику на плашку версии или из настроек)
+    if (showUpdateDialog && updateInfo != null) {
+        val update = updateInfo!!
+        var selectedChangelogTab by remember { mutableStateOf(0) } // 0: Эта версия, 1: Все версии
 
+        AlertDialog(
+            onDismissRequest = {
+                if (!isDownloadingUpdate) {
+                    showUpdateDialog = false
+                }
+            },
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CloudDownload, contentDescription = null, tint = CyanPrimary)
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = strings.changelogTitle,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = FontWeight.SemiBold
+                            text = if (update.hasUpdate) strings.updateAvailableTitle else strings.changelogTitle,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
                         )
+                    }
+                    IconButton(
+                        onClick = {
+                            if (isDownloadingUpdate) {
+                                viewModel.dismissUpdate()
+                            }
+                            showUpdateDialog = false
+                        },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Закрыть",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            text = {
+                Column(
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = CyanPrimary.copy(alpha = 0.18f),
+                            border = BorderStroke(1.dp, CyanPrimary.copy(alpha = 0.5f))
+                        ) {
+                            Text(
+                                text = "Новая: ${update.latestVersion}",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = CyanPrimary,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
+                        ) {
+                            Text(
+                                text = "Текущая: ${update.currentVersion}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+
+                    if (isDownloadingUpdate) {
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "Загрузка 3x-manager-${update.latestVersion}.apk",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = "${((downloadProgress ?: 0f) * 100).toInt()}%",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = CyanPrimary
+                                    )
+                                }
+                                LinearProgressIndicator(
+                                    progress = { downloadProgress ?: 0f },
+                                    color = CyanPrimary,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(8.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                )
+                                Text(
+                                    text = "По завершении загрузки сразу откроется окно установки",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    } else {
+                        // Вкладки переключения: "В этой версии" vs "Все версии"
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Surface(
+                                onClick = { selectedChangelogTab = 0 },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (selectedChangelogTab == 0) CyanPrimary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                border = if (selectedChangelogTab == 0) BorderStroke(1.dp, CyanPrimary) else null,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = "В версии ${update.latestVersion}",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = if (selectedChangelogTab == 0) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selectedChangelogTab == 0) CyanPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    modifier = Modifier.padding(vertical = 6.dp)
+                                )
+                            }
+
+                            Surface(
+                                onClick = { selectedChangelogTab = 1 },
+                                shape = RoundedCornerShape(8.dp),
+                                color = if (selectedChangelogTab == 1) CyanPrimary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                border = if (selectedChangelogTab == 1) BorderStroke(1.dp, CyanPrimary) else null,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = "История версий",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = if (selectedChangelogTab == 1) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (selectedChangelogTab == 1) CyanPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                    modifier = Modifier.padding(vertical = 6.dp)
+                                )
+                            }
+                        }
 
                         Surface(
                             shape = RoundedCornerShape(10.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .height(160.dp)
+                                .height(220.dp)
                         ) {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(10.dp)
-                                    .verticalScroll(rememberScrollState())
-                            ) {
-                                Text(
-                                    text = update.releaseNotes.ifBlank { "• Performance improvements and optimizations" },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    fontSize = 12.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                            if (selectedChangelogTab == 0) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(10.dp)
+                                        .verticalScroll(rememberScrollState())
+                                ) {
+                                    val currentHistory = com.example.data.updater.AppChangelog.history.firstOrNull { it.version == update.latestVersion }
+                                    if (currentHistory != null) {
+                                        ChangelogCardContent(currentHistory)
+                                    } else {
+                                        Text(
+                                            text = update.releaseNotes.ifBlank { "• Оптимизация работы и повышение стабильности\n• Исправления интерфейса и туннелей" },
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontSize = 12.sp,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+                                    }
+                                }
+                            } else {
+                                LazyColumn(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .padding(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    items(com.example.data.updater.AppChangelog.history) { entry ->
+                                        Card(
+                                            shape = RoundedCornerShape(10.dp),
+                                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Column(modifier = Modifier.padding(10.dp)) {
+                                                ChangelogCardContent(entry)
+                                            }
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
-                },
-                confirmButton = {
+                }
+            },
+            confirmButton = {
+                if (isDownloadingUpdate) {
                     Button(
                         onClick = {
                             viewModel.dismissUpdate()
-                            if (!update.downloadUrl.isNullOrBlank()) {
-                                com.example.data.updater.AppUpdateManager.startDownload(context, update.downloadUrl, update.latestVersion)
-                            } else {
-                                com.example.data.updater.AppUpdateManager.openBrowser(context, update.releasePageUrl)
-                            }
+                            showUpdateDialog = false
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary)
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
                     ) {
-                        Text(strings.btnDownloadInstall)
+                        Text(strings.btnCancel, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
-                },
-                dismissButton = {
-                    TextButton(onClick = { viewModel.dismissUpdate() }) {
-                        Text(strings.btnLater)
+                } else {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (update.hasUpdate) {
+                            Button(
+                                onClick = {
+                                    if (!update.downloadUrl.isNullOrBlank()) {
+                                        viewModel.startInAppUpdate(context, update.downloadUrl, update.latestVersion)
+                                    } else {
+                                        com.example.data.updater.AppUpdateManager.openBrowser(context, update.releasePageUrl)
+                                    }
+                                },
+                                colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(strings.btnDownloadInstall)
+                            }
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    com.example.data.updater.AppUpdateManager.openBrowser(
+                                        context,
+                                        update.downloadUrl ?: update.releasePageUrl
+                                    )
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Text(
+                                    text = strings.btnDownloadBrowser,
+                                    fontSize = 11.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+
+                            TextButton(
+                                onClick = { showUpdateDialog = false },
+                                modifier = Modifier.weight(0.7f)
+                            ) {
+                                Text(strings.btnLater)
+                            }
+                        }
                     }
                 }
-            )
-        }
+            }
+        )
     }
 }
 
@@ -456,6 +706,7 @@ fun SettingsDialog(
     onSelectTheme: (AppThemeMode) -> Unit,
     onSelectLanguage: (AppLanguage) -> Unit,
     onStopTunnel: () -> Unit,
+    onOpenUpdateDialog: () -> Unit = {},
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
@@ -866,7 +1117,13 @@ fun SettingsDialog(
                                     }
 
                                     Button(
-                                        onClick = { viewModel.checkForAppUpdates(silent = false) },
+                                        onClick = {
+                                            viewModel.checkForAppUpdates(silent = false) { hasUpdate ->
+                                                if (hasUpdate) {
+                                                    onOpenUpdateDialog()
+                                                }
+                                            }
+                                        },
                                         enabled = !isCheckingUpdate,
                                         colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
                                         shape = RoundedCornerShape(10.dp),
@@ -1144,51 +1401,41 @@ fun SettingsDialog(
         AlertDialog(
             onDismissRequest = { showChangelogDialog = false },
             title = {
-                Text(strings.changelogTitle, fontWeight = FontWeight.Bold)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.CloudDownload, contentDescription = null, tint = CyanPrimary)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(strings.changelogTitle, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleMedium)
+                    }
+                    IconButton(
+                        onClick = { showChangelogDialog = false },
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(Icons.Default.Close, contentDescription = "Закрыть", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             },
             text = {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(340.dp),
+                        .height(380.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     items(com.example.data.updater.AppChangelog.history) { entry ->
                         Card(
-                            shape = RoundedCornerShape(10.dp),
+                            shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
                             ),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = entry.version,
-                                        style = MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.Bold,
-                                        color = CyanPrimary
-                                    )
-                                    Text(
-                                        text = entry.date,
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                Spacer(modifier = Modifier.height(6.dp))
-                                entry.highlights.forEach { item ->
-                                    Text(
-                                        text = "• $item",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontSize = 12.sp,
-                                        color = MaterialTheme.colorScheme.onSurface,
-                                        modifier = Modifier.padding(vertical = 1.dp)
-                                    )
-                                }
+                                ChangelogCardContent(entry)
                             }
                         }
                     }
@@ -1197,11 +1444,97 @@ fun SettingsDialog(
             confirmButton = {
                 Button(
                     onClick = { showChangelogDialog = false },
-                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary)
+                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
+                    modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("OK")
+                    Text("Понятно")
                 }
             }
         )
+    }
+}
+
+@Composable
+fun ChangelogCardContent(entry: com.example.data.updater.ChangelogEntry) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = entry.version,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = CyanPrimary
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Surface(
+                    shape = RoundedCornerShape(6.dp),
+                    color = entry.releaseType.badgeColor.copy(alpha = 0.2f),
+                    border = BorderStroke(1.dp, entry.releaseType.badgeColor.copy(alpha = 0.6f))
+                ) {
+                    Text(
+                        text = entry.releaseType.label,
+                        style = MaterialTheme.typography.labelSmall,
+                        fontWeight = FontWeight.Bold,
+                        color = entry.releaseType.badgeColor,
+                        fontSize = 10.sp,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+            Text(
+                text = entry.date,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        if (entry.summary.isNotBlank()) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = entry.summary,
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontSize = 12.sp
+            )
+        }
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        entry.categories.forEach { category ->
+            Text(
+                text = category.title,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.Bold,
+                color = CyanPrimary,
+                fontSize = 11.sp,
+                modifier = Modifier.padding(top = 4.dp, bottom = 2.dp)
+            )
+            category.items.forEach { item ->
+                Row(
+                    modifier = Modifier.padding(vertical = 1.5.dp, horizontal = 4.dp),
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Text(
+                        text = "•",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = CyanPrimary,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(end = 6.dp)
+                    )
+                    Text(
+                        text = item,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontSize = 11.5.sp,
+                        lineHeight = 15.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
     }
 }

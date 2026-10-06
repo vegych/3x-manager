@@ -256,6 +256,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val _isCheckingUpdate = MutableStateFlow(false)
     val isCheckingUpdate: StateFlow<Boolean> = _isCheckingUpdate.asStateFlow()
 
+    private val _isDownloadingUpdate = MutableStateFlow(false)
+    val isDownloadingUpdate: StateFlow<Boolean> = _isDownloadingUpdate.asStateFlow()
+
+    private val _downloadProgress = MutableStateFlow<Float?>(null)
+    val downloadProgress: StateFlow<Float?> = _downloadProgress.asStateFlow()
+
     init {
         viewModelScope.launch {
             repository.initDefaultDataIfNeeded()
@@ -278,7 +284,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _lanIp.value = NetworkUtils.getLocalIpAddress()
     }
 
-    fun checkForAppUpdates(silent: Boolean = false) {
+    fun checkForAppUpdates(silent: Boolean = false, onComplete: ((Boolean) -> Unit)? = null) {
         viewModelScope.launch {
             _isCheckingUpdate.value = true
             val res = com.example.data.updater.AppUpdateManager.checkForUpdates()
@@ -286,12 +292,38 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             if (res.isSuccess) {
                 val info = res.getOrThrow()
                 _updateInfo.value = info
+                onComplete?.invoke(info.hasUpdate)
+            } else {
+                onComplete?.invoke(false)
             }
         }
     }
 
     fun dismissUpdate() {
         _updateInfo.value = null
+        _isDownloadingUpdate.value = false
+        _downloadProgress.value = null
+    }
+
+    fun startInAppUpdate(context: Context, downloadUrl: String, versionName: String) {
+        viewModelScope.launch {
+            _isDownloadingUpdate.value = true
+            _downloadProgress.value = 0f
+            val res = com.example.data.updater.AppUpdateManager.downloadAndInstallApk(
+                context = context,
+                downloadUrl = downloadUrl,
+                versionName = versionName,
+                onProgress = { progress ->
+                    _downloadProgress.value = progress
+                }
+            )
+            _isDownloadingUpdate.value = false
+            if (res.isFailure) {
+                _downloadProgress.value = null
+                // Fallback to opening the browser on error
+                com.example.data.updater.AppUpdateManager.openBrowser(context, downloadUrl)
+            }
+        }
     }
 
     fun selectServer(server: ServerEntity, context: Context? = null) {

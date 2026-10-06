@@ -126,6 +126,7 @@ interface Strings {
     val updateAvailableTitle: String
     val updateAvailableText: (String, String) -> String
     val btnDownloadInstall: String
+    val btnDownloadBrowser: String
     val btnLater: String
 
     val openTabsTitle: String
@@ -275,6 +276,7 @@ object RussianStrings : Strings {
         "Доступна новая версия $latest (текущая: $current). Скачать и установить сейчас?"
     }
     override val btnDownloadInstall = "Скачать и установить"
+    override val btnDownloadBrowser = "Скачать через браузер"
     override val btnLater = "Позже"
 
     override val openTabsTitle = "Открытые панели"
@@ -416,6 +418,7 @@ object EnglishStrings : Strings {
         "A new version $latest is available (current: $current). Download and install now?"
     }
     override val btnDownloadInstall = "Download & Install"
+    override val btnDownloadBrowser = "Download in Browser"
     override val btnLater = "Later"
 
     override val openTabsTitle = "Active Panels"
