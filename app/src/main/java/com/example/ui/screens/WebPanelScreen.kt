@@ -73,6 +73,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.example.data.db.ServerEntity
 import com.example.service.ActiveTunnelState
+import com.example.ui.i18n.RussianStrings
+import com.example.ui.i18n.Strings
 import com.example.ui.theme.AmberAccent
 import com.example.ui.theme.CyanPrimary
 import com.example.ui.theme.MintSecondary
@@ -86,6 +88,7 @@ fun WebPanelScreen(
     server: ServerEntity? = null,
     tunnelState: ActiveTunnelState? = null,
     maskIp: Boolean = false,
+    strings: Strings = RussianStrings,
     onStartTunnel: (() -> Unit)? = null,
     onGoToServers: (() -> Unit)? = null,
     modifier: Modifier = Modifier

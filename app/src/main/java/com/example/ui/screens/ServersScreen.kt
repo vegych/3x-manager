@@ -78,24 +78,14 @@ import androidx.compose.ui.unit.sp
 import com.example.data.db.ServerEntity
 import com.example.service.ActiveTunnelState
 import com.example.ui.components.TermiusBadgeL
+import com.example.ui.i18n.RussianStrings
+import com.example.ui.i18n.Strings
 import com.example.ui.theme.AmberAccent
 import com.example.ui.theme.CyanPrimary
 import com.example.ui.theme.MintSecondary
 import com.example.ui.theme.RedAccent
 import java.io.BufferedReader
 import java.io.InputStreamReader
-
-fun formatServerCount(count: Int): String {
-    val rem100 = count % 100
-    val rem10 = count % 10
-    val word = when {
-        rem100 in 11..19 -> "серверов"
-        rem10 == 1 -> "сервер"
-        rem10 in 2..4 -> "сервера"
-        else -> "серверов"
-    }
-    return "$count $word"
-}
 
 @Composable
 fun ServersScreen(
@@ -104,6 +94,7 @@ fun ServersScreen(
     tunnelState: ActiveTunnelState? = null,
     maskIp: Boolean = false,
     sortMode: com.example.ui.viewmodel.ServerSortMode = com.example.ui.viewmodel.ServerSortMode.BY_USAGE,
+    strings: Strings = RussianStrings,
     onSortModeChange: (com.example.ui.viewmodel.ServerSortMode) -> Unit = {},
     onStopTunnel: (() -> Unit)? = null,
     onSelectServer: (ServerEntity) -> Unit,
@@ -130,7 +121,7 @@ fun ServersScreen(
                     horizontalArrangement = Arrangement.SpaceBetween
                 ) {
                     Text(
-                        text = formatServerCount(servers.size),
+                        text = strings.sortCountFormat(servers.size),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -142,6 +133,11 @@ fun ServersScreen(
                     ) {
                         com.example.ui.viewmodel.ServerSortMode.values().forEach { mode ->
                             val isSelected = sortMode == mode
+                            val modeTitle = when (mode) {
+                                com.example.ui.viewmodel.ServerSortMode.BY_USAGE -> strings.sortUsage
+                                com.example.ui.viewmodel.ServerSortMode.ALPHABETICAL -> strings.sortAlphabetical
+                                com.example.ui.viewmodel.ServerSortMode.NEWEST -> strings.sortNewest
+                            }
                             Surface(
                                 onClick = { onSortModeChange(mode) },
                                 shape = RoundedCornerShape(8.dp),
@@ -149,7 +145,7 @@ fun ServersScreen(
                                 border = if (isSelected) androidx.compose.foundation.BorderStroke(1.dp, CyanPrimary) else null
                             ) {
                                 Text(
-                                    text = mode.title,
+                                    text = modeTitle,
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                     color = if (isSelected) CyanPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
@@ -166,7 +162,7 @@ fun ServersScreen(
                 item(key = "active_tunnel_banner", contentType = "tunnel_banner") {
                     val activeServerName = remember(servers, tunnelState, selectedServer) {
                         val activeServer = servers.firstOrNull { it.id == tunnelState.configId || it.localPort == tunnelState.localPort } ?: selectedServer
-                        activeServer?.name ?: "Активен"
+                        activeServer?.name ?: "Active"
                     }
                     Surface(
                         shape = RoundedCornerShape(12.dp),
@@ -195,7 +191,7 @@ fun ServersScreen(
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text(
-                                    text = "Туннель: $activeServerName",
+                                    text = "${strings.tunnelBannerPrefix}$activeServerName",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.SemiBold,
                                     fontSize = 12.sp,
@@ -219,7 +215,7 @@ fun ServersScreen(
                                     modifier = Modifier.size(12.dp)
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("Отключить", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text(strings.disconnectButton, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
                             }
                         }
                     }
@@ -242,13 +238,13 @@ fun ServersScreen(
                                 .padding(28.dp)
                         ) {
                             Text(
-                                text = "Нет сохраненных серверов",
+                                text = strings.noServersTitle,
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.SemiBold
                             )
                             Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = "Нажмите «+» справа снизу, чтобы добавить панель 3x-ui по ссылке",
+                                text = strings.noServersSubtitle,
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -271,6 +267,7 @@ fun ServersScreen(
                     isSelected = isSelected,
                     isTunnelActive = isTunnelActive,
                     maskIp = maskIp,
+                    strings = strings,
                     onSelect = { onSelectServer(server) },
                     onEdit = {
                         editingServer = server
@@ -299,13 +296,14 @@ fun ServersScreen(
                 .padding(20.dp)
                 .testTag("add_server_fab")
         ) {
-            Icon(Icons.Default.Add, contentDescription = "Добавить панель", modifier = Modifier.size(28.dp))
+            Icon(Icons.Default.Add, contentDescription = strings.addServerTitle, modifier = Modifier.size(28.dp))
         }
     }
 
     if (showDialog) {
         ServerEditDialogClean(
             initialServer = editingServer,
+            strings = strings,
             onDismiss = { showDialog = false },
             onSave = {
                 onSaveServer(it)
@@ -317,8 +315,8 @@ fun ServersScreen(
     serverToDelete?.let { server ->
         AlertDialog(
             onDismissRequest = { serverToDelete = null },
-            title = { Text("Удалить сервер?") },
-            text = { Text("Удалить «${server.name}» из списка?") },
+            title = { Text(strings.deleteServerDialogTitle) },
+            text = { Text(strings.deleteServerDialogText(server.name)) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -327,12 +325,12 @@ fun ServersScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = RedAccent)
                 ) {
-                    Text("Удалить")
+                    Text(strings.btnDelete)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { serverToDelete = null }) {
-                    Text("Отмена")
+                    Text(strings.btnCancel)
                 }
             }
         )
@@ -345,6 +343,7 @@ fun ServerCardSimple(
     isSelected: Boolean,
     isTunnelActive: Boolean,
     maskIp: Boolean = false,
+    strings: Strings = RussianStrings,
     onSelect: () -> Unit,
     onEdit: () -> Unit,
     onDelete: () -> Unit
@@ -357,7 +356,7 @@ fun ServerCardSimple(
     }
     val displayEffectiveUrl = remember(server, maskIp) {
         if (server.useTunnel) {
-            "SSH Проброс ➔ ${server.name}"
+            strings.sshForwardRoute(server.name)
         } else {
             val maskedHost = com.example.ui.viewmodel.MainViewModel.maskIp(server.host, maskIp)
             val scheme = if (server.useHttps) "https" else "http"
@@ -416,7 +415,7 @@ fun ServerCardSimple(
                         modifier = Modifier.padding(start = 6.dp)
                     ) {
                         Text(
-                            text = if (isTunnelActive) "Туннель ВКЛ" else "Автопроброс",
+                            text = if (isTunnelActive) strings.tunnelOnBadge else strings.autoForwardBadge,
                             color = if (isTunnelActive) MintSecondary else AmberAccent,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
@@ -439,7 +438,7 @@ fun ServerCardSimple(
                         modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
                     ) {
                         Text(
-                            text = "SSH Туннель",
+                            text = strings.sshTunnelBadge,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.SemiBold,
                             color = CyanPrimary
@@ -480,15 +479,15 @@ fun ServerCardSimple(
                 ) {
                     Icon(Icons.Default.Login, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Открыть", fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                    Text(strings.actionOpen, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
                 }
 
                 Row {
                     IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.Edit, contentDescription = "Редактировать", modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Edit, contentDescription = strings.actionEdit, modifier = Modifier.size(18.dp))
                     }
                     IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.Delete, contentDescription = "Удалить", tint = RedAccent, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Delete, contentDescription = strings.actionDelete, tint = RedAccent, modifier = Modifier.size(18.dp))
                     }
                 }
             }
@@ -507,6 +506,7 @@ fun ServerCardSimple(
 @Composable
 fun ServerEditDialogClean(
     initialServer: ServerEntity?,
+    strings: Strings = RussianStrings,
     onDismiss: () -> Unit,
     onSave: (ServerEntity) -> Unit
 ) {
@@ -560,10 +560,10 @@ fun ServerEditDialogClean(
                     val keyContent = reader.readText()
                     sshKey = keyContent.trim()
                     sshAuthType = "KEY"
-                    Toast.makeText(context, "SSH-ключ успешно выбран", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, strings.toastKeySelected, Toast.LENGTH_SHORT).show()
                 }
             } catch (e: Exception) {
-                Toast.makeText(context, "Ошибка чтения ключа: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "${strings.toastKeyReadError}: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -572,7 +572,7 @@ fun ServerEditDialogClean(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = if (initialServer == null) "Добавить сервер 3x-ui" else "Редактировать сервер",
+                text = if (initialServer == null) strings.addServerTitle else strings.editServerTitle,
                 fontWeight = FontWeight.Bold,
                 style = MaterialTheme.typography.titleLarge,
                 letterSpacing = (-0.5).sp
@@ -588,8 +588,8 @@ fun ServerEditDialogClean(
                     OutlinedTextField(
                         value = labelName,
                         onValueChange = { labelName = it },
-                        label = { Text("Название (Label)") },
-                        placeholder = { Text("local u1host") },
+                        label = { Text(strings.labelNameField) },
+                        placeholder = { Text(strings.labelNamePlaceholder) },
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
                         modifier = Modifier
@@ -611,10 +611,10 @@ fun ServerEditDialogClean(
                                         labelName = if (parsed.isLocalhost) "local 3x-ui (${parsed.port})" else "3x-ui (${parsed.host})"
                                     }
                                 },
-                                label = { Text("Ссылка на панель (URL) *") },
+                                label = { Text(strings.panelUrlField) },
                                 placeholder = {
                                     Text(
-                                        "https://localhost:2370/secret/panel/",
+                                        strings.panelUrlPlaceholder,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.45f)
                                     )
                                 },
@@ -639,7 +639,7 @@ fun ServerEditDialogClean(
                                 },
                                 modifier = Modifier.padding(start = 4.dp)
                             ) {
-                                Icon(Icons.Default.ContentPaste, contentDescription = "Вставить", tint = CyanPrimary)
+                                Icon(Icons.Default.ContentPaste, contentDescription = strings.actionPaste, tint = CyanPrimary)
                             }
                         }
                     }
@@ -650,7 +650,7 @@ fun ServerEditDialogClean(
                     OutlinedTextField(
                         value = panelUsername,
                         onValueChange = { panelUsername = it },
-                        label = { Text("Логин от панели") },
+                        label = { Text(strings.panelUsernameField) },
                         placeholder = {
                             Text(
                                 "admin",
@@ -670,7 +670,7 @@ fun ServerEditDialogClean(
                     OutlinedTextField(
                         value = panelPassword,
                         onValueChange = { panelPassword = it },
-                        label = { Text("Пароль от панели") },
+                        label = { Text(strings.panelPasswordField) },
                         singleLine = true,
                         shape = RoundedCornerShape(12.dp),
                         visualTransformation = if (isPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -704,13 +704,13 @@ fun ServerEditDialogClean(
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Column {
                                         Text(
-                                            text = "Сервер для проброса портов",
+                                            text = strings.portForwardHeader,
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold,
                                             color = CyanPrimary
                                         )
                                         Text(
-                                            text = "Укажите промежуточный SSH-сервер (Intermediate host):",
+                                            text = strings.portForwardSub,
                                             style = MaterialTheme.typography.bodySmall,
                                             fontSize = 11.sp,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -722,7 +722,7 @@ fun ServerEditDialogClean(
                                 OutlinedTextField(
                                     value = sshHost,
                                     onValueChange = { sshHost = it },
-                                    label = { Text("SSH Сервер (Intermediate host) *") },
+                                    label = { Text(strings.sshHostField) },
                                     placeholder = {
                                         Text(
                                             "vps.example.com",
@@ -741,7 +741,7 @@ fun ServerEditDialogClean(
                                     OutlinedTextField(
                                         value = sshUser,
                                         onValueChange = { sshUser = it },
-                                        label = { Text("SSH Юзер") },
+                                        label = { Text(strings.sshUserField) },
                                         placeholder = {
                                             Text(
                                                 "root",
@@ -757,7 +757,7 @@ fun ServerEditDialogClean(
                                     OutlinedTextField(
                                         value = sshPortText,
                                         onValueChange = { sshPortText = it },
-                                        label = { Text("Порт") },
+                                        label = { Text(strings.sshPortField) },
                                         placeholder = {
                                             Text(
                                                 "22",
@@ -784,7 +784,7 @@ fun ServerEditDialogClean(
                                         Icon(Icons.Default.VpnKey, contentDescription = null, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text(
-                                            "SSH Key",
+                                            strings.authTypeKey,
                                             color = if (sshAuthType == "KEY") Color.White else MaterialTheme.colorScheme.onSurface,
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.SemiBold
@@ -802,7 +802,7 @@ fun ServerEditDialogClean(
                                         Icon(Icons.Default.Lock, contentDescription = null, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text(
-                                            "Пароль",
+                                            strings.authTypePassword,
                                             color = if (sshAuthType == "PASSWORD") Color.White else MaterialTheme.colorScheme.onSurface,
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.SemiBold
@@ -813,7 +813,7 @@ fun ServerEditDialogClean(
                                 if (sshAuthType == "KEY") {
                                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                         Text(
-                                            text = if (sshKey.isNotBlank()) "✓ SSH-ключ добавлен" else "Приватный ключ SSH:",
+                                            text = if (sshKey.isNotBlank()) strings.keyAdded else strings.privateKeyPrompt,
                                             style = MaterialTheme.typography.bodySmall,
                                             color = if (sshKey.isNotBlank()) MintSecondary else MaterialTheme.colorScheme.onSurface,
                                             fontWeight = FontWeight.SemiBold
@@ -830,7 +830,7 @@ fun ServerEditDialogClean(
                                                     val clip = clipboard.primaryClip?.getItemAt(0)?.text?.toString()
                                                     if (!clip.isNullOrBlank()) {
                                                         sshKey = clip.trim()
-                                                        Toast.makeText(context, "Ключ вставлен", Toast.LENGTH_SHORT).show()
+                                                        Toast.makeText(context, strings.toastKeyPasted, Toast.LENGTH_SHORT).show()
                                                     }
                                                 },
                                                 shape = RoundedCornerShape(10.dp),
@@ -841,7 +841,7 @@ fun ServerEditDialogClean(
                                             ) {
                                                 Icon(Icons.Default.ContentPaste, contentDescription = null, modifier = Modifier.size(14.dp))
                                                 Spacer(modifier = Modifier.width(6.dp))
-                                                Text("Вставить", fontSize = 12.sp)
+                                                Text(strings.actionPaste, fontSize = 12.sp)
                                             }
 
                                             OutlinedButton(
@@ -854,7 +854,7 @@ fun ServerEditDialogClean(
                                             ) {
                                                 Icon(Icons.Default.FileOpen, contentDescription = null, modifier = Modifier.size(14.dp))
                                                 Spacer(modifier = Modifier.width(6.dp))
-                                                Text("Выбрать файл", fontSize = 12.sp)
+                                                Text(strings.actionPickFile, fontSize = 12.sp)
                                             }
                                         }
 
@@ -871,7 +871,7 @@ fun ServerEditDialogClean(
                                         OutlinedTextField(
                                             value = sshKeyPassphrase,
                                             onValueChange = { sshKeyPassphrase = it },
-                                            label = { Text("Passphrase ключа (если есть)") },
+                                            label = { Text(strings.keyPassphraseField) },
                                             singleLine = true,
                                             shape = RoundedCornerShape(12.dp),
                                             visualTransformation = PasswordVisualTransformation(),
@@ -882,7 +882,7 @@ fun ServerEditDialogClean(
                                     OutlinedTextField(
                                         value = sshPassword,
                                         onValueChange = { sshPassword = it },
-                                        label = { Text("SSH Пароль") },
+                                        label = { Text(strings.sshPasswordField) },
                                         singleLine = true,
                                         shape = RoundedCornerShape(12.dp),
                                         visualTransformation = if (isSshPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
@@ -945,12 +945,12 @@ fun ServerEditDialogClean(
                 shape = RoundedCornerShape(10.dp),
                 modifier = Modifier.testTag("save_server_button")
             ) {
-                Text("Сохранить")
+                Text(strings.btnSave)
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                Text(strings.btnCancel)
             }
         }
     )

@@ -14,6 +14,9 @@ import com.example.data.repository.AppRepository
 import com.example.service.ActiveTunnelState
 import com.example.service.NetworkUtils
 import com.example.service.TunnelService
+import com.example.ui.i18n.AppLanguage
+import com.example.ui.i18n.Strings
+import com.example.ui.i18n.getAppStrings
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -45,6 +48,25 @@ enum class ServerSortMode(val title: String) {
 class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppRepository(application)
     private val prefs = application.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
+
+    private val _appLanguage = MutableStateFlow(
+        AppLanguage.values().find { it.name == prefs.getString("app_language", AppLanguage.SYSTEM.name) }
+            ?: AppLanguage.SYSTEM
+    )
+    val appLanguage: StateFlow<AppLanguage> = _appLanguage.asStateFlow()
+
+    private val _strings = MutableStateFlow(getAppStrings(_appLanguage.value))
+    val strings: StateFlow<Strings> = _strings.asStateFlow()
+
+    fun setAppLanguage(lang: AppLanguage) {
+        _appLanguage.value = lang
+        _strings.value = getAppStrings(lang)
+        prefs.edit().putString("app_language", lang.name).apply()
+        viewModelScope.launch {
+            val msg = if (lang == AppLanguage.EN) "Language: English" else if (lang == AppLanguage.RU) "Язык: Русский" else "Язык: По умолчанию"
+            _userMessage.emit(msg)
+        }
+    }
 
     companion object {
         fun maskIp(ipOrHost: String, mask: Boolean): String {

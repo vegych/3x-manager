@@ -99,6 +99,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.ui.i18n.AppLanguage
+import com.example.ui.i18n.RussianStrings
+import com.example.ui.i18n.Strings
 import com.example.ui.screens.ServersScreen
 import com.example.ui.screens.WebPanelScreen
 import com.example.ui.theme.AmberAccent
@@ -132,6 +135,8 @@ fun MainAppScreen(
     val tunnelState by viewModel.tunnelState.collectAsStateWithLifecycle()
     val closePolicy by viewModel.closePolicy.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
+    val strings by viewModel.strings.collectAsStateWithLifecycle()
     val maskIp by viewModel.maskIp.collectAsStateWithLifecycle()
     val sortMode by viewModel.sortMode.collectAsStateWithLifecycle()
     val updateInfo by viewModel.updateInfo.collectAsStateWithLifecycle()
@@ -151,7 +156,7 @@ fun MainAppScreen(
                 TopAppBar(
                     title = {
                         Text(
-                            text = "3x manager",
+                            text = strings.appName,
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                             fontSize = 20.sp,
@@ -181,13 +186,13 @@ fun MainAppScreen(
                                     Spacer(modifier = Modifier.width(5.dp))
                                     Icon(
                                         imageVector = Icons.Default.PowerSettingsNew,
-                                        contentDescription = "Отключить туннель",
+                                        contentDescription = strings.disconnectButton,
                                         tint = RedAccent,
                                         modifier = Modifier.size(13.dp)
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text(
-                                        text = "Откл.",
+                                        text = strings.stopShort,
                                         style = MaterialTheme.typography.labelSmall,
                                         fontWeight = FontWeight.Bold,
                                         color = RedAccent,
@@ -200,14 +205,14 @@ fun MainAppScreen(
                         IconButton(onClick = { viewModel.toggleMaskIp() }) {
                             Icon(
                                 imageVector = if (maskIp) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                                contentDescription = if (maskIp) "Показать IP" else "Скрыть IP",
+                                contentDescription = if (maskIp) strings.maskIpTitle else strings.maskIpTitle,
                                 tint = if (maskIp) CyanPrimary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                         }
                         IconButton(onClick = { showSettingsDialog = true }) {
                             Icon(
                                 imageVector = Icons.Default.Settings,
-                                contentDescription = "Настройки"
+                                contentDescription = strings.settingsTitle
                             )
                         }
                     },
@@ -234,6 +239,7 @@ fun MainAppScreen(
                         tunnelState = tunnelState,
                         maskIp = maskIp,
                         sortMode = sortMode,
+                        strings = strings,
                         onSortModeChange = { viewModel.setSortMode(it) },
                         onStopTunnel = { viewModel.stopTunnel(context) },
                         onSelectServer = { server ->
@@ -264,6 +270,7 @@ fun MainAppScreen(
                         server = selectedServer,
                         tunnelState = tunnelState,
                         maskIp = maskIp,
+                        strings = strings,
                         onStartTunnel = {
                             selectedServer?.let { s -> viewModel.startTunnelForServer(s, context) }
                         },
@@ -282,9 +289,12 @@ fun MainAppScreen(
             viewModel = viewModel,
             currentPolicy = closePolicy,
             currentTheme = themeMode,
+            currentLanguage = appLanguage,
+            strings = strings,
             tunnelState = tunnelState,
             onSelectPolicy = { policy -> viewModel.setClosePolicy(policy) },
             onSelectTheme = { mode -> viewModel.setThemeMode(mode) },
+            onSelectLanguage = { lang -> viewModel.setAppLanguage(lang) },
             onStopTunnel = { viewModel.stopTunnel(context) },
             onDismiss = { showSettingsDialog = false }
         )
@@ -296,21 +306,21 @@ fun MainAppScreen(
             AlertDialog(
                 onDismissRequest = { viewModel.dismissUpdate() },
                 icon = { Icon(Icons.Default.CloudDownload, contentDescription = null, tint = CyanPrimary) },
-                title = { Text("Доступно обновление!", fontWeight = FontWeight.Bold) },
+                title = { Text(strings.updateAvailableTitle, fontWeight = FontWeight.Bold) },
                 text = {
                     Column(
                         verticalArrangement = Arrangement.spacedBy(10.dp),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text(
-                            text = "Версия ${update.latestVersion} (у вас ${update.currentVersion})",
+                            text = "${strings.versionPrefix} ${update.latestVersion} (у вас ${update.currentVersion})",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = CyanPrimary
                         )
 
                         Text(
-                            text = "Что нового в этом обновлении:",
+                            text = strings.changelogTitle,
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold
                         )
@@ -329,7 +339,7 @@ fun MainAppScreen(
                                     .verticalScroll(rememberScrollState())
                             ) {
                                 Text(
-                                    text = update.releaseNotes.ifBlank { "• Улучшения стабильности и оптимизация работы" },
+                                    text = update.releaseNotes.ifBlank { "• Performance improvements and optimizations" },
                                     style = MaterialTheme.typography.bodySmall,
                                     fontSize = 12.sp,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -350,12 +360,12 @@ fun MainAppScreen(
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary)
                     ) {
-                        Text("Скачать APK")
+                        Text(strings.btnDownloadInstall)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { viewModel.dismissUpdate() }) {
-                        Text("Позже")
+                        Text(strings.btnLater)
                     }
                 }
             )
@@ -368,9 +378,12 @@ fun SettingsDialog(
     viewModel: MainViewModel,
     currentPolicy: TunnelClosePolicy,
     currentTheme: AppThemeMode,
+    currentLanguage: AppLanguage = AppLanguage.SYSTEM,
+    strings: Strings = RussianStrings,
     tunnelState: com.example.service.ActiveTunnelState,
     onSelectPolicy: (TunnelClosePolicy) -> Unit,
     onSelectTheme: (AppThemeMode) -> Unit,
+    onSelectLanguage: (AppLanguage) -> Unit,
     onStopTunnel: () -> Unit,
     onDismiss: () -> Unit
 ) {
@@ -397,9 +410,9 @@ fun SettingsDialog(
                 context.contentResolver.openOutputStream(uri)?.use { os ->
                     os.write(json.toByteArray(Charsets.UTF_8))
                 }
-                Toast.makeText(context, "Резервная копия сохранена", Toast.LENGTH_SHORT).show()
+                Toast.makeText(context, strings.msgServerSaved("Backup"), Toast.LENGTH_SHORT).show()
             } catch (e: Exception) {
-                Toast.makeText(context, "Ошибка сохранения: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -414,14 +427,14 @@ fun SettingsDialog(
                     val content = BufferedReader(InputStreamReader(stream)).readText()
                     viewModel.restoreBackup(content) { res ->
                         if (res.isSuccess) {
-                            Toast.makeText(context, "Восстановлено серверов: ${res.getOrNull()}", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(context, strings.msgBackupRestored(res.getOrNull() ?: 0), Toast.LENGTH_SHORT).show()
                         } else {
-                            Toast.makeText(context, "Ошибка: ${res.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "Error: ${res.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
                         }
                     }
                 }
             } catch (e: Exception) {
-                Toast.makeText(context, "Ошибка чтения файла: ${e.message}", Toast.LENGTH_LONG).show()
+                Toast.makeText(context, "Error reading file: ${e.message}", Toast.LENGTH_LONG).show()
             }
         }
     }
@@ -436,7 +449,7 @@ fun SettingsDialog(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.Settings, contentDescription = null, tint = CyanPrimary)
                 Spacer(modifier = Modifier.width(10.dp))
-                Text("Настройки", fontWeight = FontWeight.Bold)
+                Text(strings.settingsTitle, fontWeight = FontWeight.Bold)
             }
         },
         text = {
@@ -455,13 +468,13 @@ fun SettingsDialog(
                     Tab(
                         selected = selectedTab == 0,
                         onClick = { selectedTab = 0 },
-                        text = { Text("Общие", fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal) },
+                        text = { Text(strings.tabGeneral, fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal) },
                         icon = { Icon(Icons.Default.Tune, contentDescription = null, modifier = Modifier.size(18.dp)) }
                     )
                     Tab(
                         selected = selectedTab == 1,
                         onClick = { selectedTab = 1 },
-                        text = { Text("Бэкап", fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal) },
+                        text = { Text(strings.tabBackup, fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal) },
                         icon = { Icon(Icons.Default.Storage, contentDescription = null, modifier = Modifier.size(18.dp)) }
                     )
                 }
@@ -477,10 +490,57 @@ fun SettingsDialog(
                     verticalArrangement = Arrangement.spacedBy(14.dp)
                 ) {
                     if (selectedTab == 0) {
-                        // 1. Theme Selection Segmented Row
+                        // 1. Language Selection Segmented Row
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(
-                                text = "Тема оформления",
+                                text = strings.languageTitle,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                AppLanguage.values().forEach { lang ->
+                                    val isSelected = currentLanguage == lang
+                                    val title = when (lang) {
+                                        AppLanguage.SYSTEM -> "Auto"
+                                        AppLanguage.RU -> "RU"
+                                        AppLanguage.EN -> "EN"
+                                    }
+                                    Card(
+                                        shape = RoundedCornerShape(12.dp),
+                                        colors = CardDefaults.cardColors(
+                                            containerColor = if (isSelected) CyanPrimary.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+                                        ),
+                                        border = if (isSelected) BorderStroke(1.5.dp, CyanPrimary) else null,
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .clickable { onSelectLanguage(lang) }
+                                    ) {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = Arrangement.Center,
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(vertical = 8.dp, horizontal = 4.dp)
+                                        ) {
+                                            Text(
+                                                text = title,
+                                                style = MaterialTheme.typography.labelMedium,
+                                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (isSelected) CyanPrimary else MaterialTheme.colorScheme.onSurface
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 2. Theme Selection Segmented Row
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = strings.themeTitle,
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
@@ -494,6 +554,11 @@ fun SettingsDialog(
                                         AppThemeMode.DARK -> Icons.Default.DarkMode
                                         AppThemeMode.LIGHT -> Icons.Default.LightMode
                                         AppThemeMode.SYSTEM -> Icons.Default.SettingsBrightness
+                                    }
+                                    val title = when (mode) {
+                                        AppThemeMode.DARK -> strings.themeDark
+                                        AppThemeMode.LIGHT -> strings.themeLight
+                                        AppThemeMode.SYSTEM -> strings.themeSystem
                                     }
                                     Card(
                                         shape = RoundedCornerShape(12.dp),
@@ -520,7 +585,7 @@ fun SettingsDialog(
                                             )
                                             Spacer(modifier = Modifier.height(4.dp))
                                             Text(
-                                                text = mode.title,
+                                                text = title,
                                                 style = MaterialTheme.typography.labelMedium,
                                                 fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                                                 color = if (isSelected) CyanPrimary else MaterialTheme.colorScheme.onSurface
@@ -531,7 +596,7 @@ fun SettingsDialog(
                             }
                         }
 
-                        // 2. Expandable Tunnel Close Policy Selector
+                        // 3. Expandable Tunnel Close Policy Selector
                         Card(
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
@@ -545,12 +610,17 @@ fun SettingsDialog(
                                         .fillMaxWidth()
                                         .clickable { policyExpanded = !policyExpanded }
                                 ) {
+                                    val policyTitle = when (currentPolicy) {
+                                        TunnelClosePolicy.ON_PANEL_EXIT -> strings.policyPanelExitTitle
+                                        TunnelClosePolicy.ON_APP_CLOSE -> strings.policyAppCloseTitle
+                                        TunnelClosePolicy.NEVER -> strings.policyNeverTitle
+                                    }
                                     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
                                         Icon(Icons.Default.Tune, contentDescription = null, tint = CyanPrimary, modifier = Modifier.size(20.dp))
                                         Spacer(modifier = Modifier.width(10.dp))
                                         Column {
-                                            Text("Режим SSH-туннеля", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                            Text(currentPolicy.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                            Text(strings.tunnelPolicyTitle, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text(policyTitle, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                                         }
                                     }
                                     Icon(
@@ -572,6 +642,16 @@ fun SettingsDialog(
                                         Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
                                         TunnelClosePolicy.values().forEach { policy ->
                                             val isSelected = currentPolicy == policy
+                                            val pTitle = when (policy) {
+                                                TunnelClosePolicy.ON_PANEL_EXIT -> strings.policyPanelExitTitle
+                                                TunnelClosePolicy.ON_APP_CLOSE -> strings.policyAppCloseTitle
+                                                TunnelClosePolicy.NEVER -> strings.policyNeverTitle
+                                            }
+                                            val pDesc = when (policy) {
+                                                TunnelClosePolicy.ON_PANEL_EXIT -> strings.policyPanelExitDesc
+                                                TunnelClosePolicy.ON_APP_CLOSE -> strings.policyAppCloseDesc
+                                                TunnelClosePolicy.NEVER -> strings.policyNeverDesc
+                                            }
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically,
                                                 modifier = Modifier
@@ -593,12 +673,12 @@ fun SettingsDialog(
                                                 Spacer(modifier = Modifier.width(8.dp))
                                                 Column {
                                                     Text(
-                                                        text = policy.title,
+                                                        text = pTitle,
                                                         style = MaterialTheme.typography.bodySmall,
                                                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
                                                     )
                                                     Text(
-                                                        text = policy.description,
+                                                        text = pDesc,
                                                         style = MaterialTheme.typography.labelSmall,
                                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                                     )
@@ -623,8 +703,8 @@ fun SettingsDialog(
                                     modifier = Modifier.padding(12.dp)
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text("SSH-туннель активен", fontWeight = FontWeight.Bold, color = MintSecondary, style = MaterialTheme.typography.bodyMedium)
-                                        Text("Фоновое безопасное соединение", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        Text(strings.activeTunnelCardTitle, fontWeight = FontWeight.Bold, color = MintSecondary, style = MaterialTheme.typography.bodyMedium)
+                                        Text(strings.activeTunnelCardDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                     Button(
                                         onClick = onStopTunnel,
@@ -635,13 +715,13 @@ fun SettingsDialog(
                                     ) {
                                         Icon(Icons.Default.PowerSettingsNew, contentDescription = null, modifier = Modifier.size(14.dp))
                                         Spacer(modifier = Modifier.width(4.dp))
-                                        Text("Отключить", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                                        Text(strings.disconnectButton, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
                         }
 
-                        // 3. Версия и Обновление приложения (GitHub Releases Auto-Updater)
+                        // 4. Версия и Обновление приложения (GitHub Releases Auto-Updater)
                         Card(
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
@@ -655,12 +735,12 @@ fun SettingsDialog(
                                 ) {
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
-                                            text = "Версия приложения",
+                                            text = strings.versionPrefix,
                                             style = MaterialTheme.typography.titleSmall,
                                             fontWeight = FontWeight.Bold
                                         )
                                         Text(
-                                            text = "Текущая: v${com.example.BuildConfig.VERSION_NAME}",
+                                            text = "v${com.example.BuildConfig.VERSION_NAME}",
                                             style = MaterialTheme.typography.labelSmall,
                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
@@ -676,7 +756,7 @@ fun SettingsDialog(
                                             contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                                             modifier = Modifier.height(34.dp)
                                         ) {
-                                            Text("Чейнджлог", style = MaterialTheme.typography.labelSmall)
+                                            Text(strings.changelogTitle, style = MaterialTheme.typography.labelSmall)
                                         }
 
                                         Button(
@@ -700,7 +780,7 @@ fun SettingsDialog(
                                                     modifier = Modifier.size(14.dp)
                                                 )
                                                 Spacer(modifier = Modifier.width(4.dp))
-                                                Text("Обновить", style = MaterialTheme.typography.labelSmall, color = Color.White)
+                                                Text(strings.btnCheckUpdates, style = MaterialTheme.typography.labelSmall, color = Color.White)
                                             }
                                         }
                                     }
@@ -725,18 +805,18 @@ fun SettingsDialog(
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(Icons.Default.Storage, contentDescription = null, tint = CyanPrimary, modifier = Modifier.size(20.dp))
                                         Spacer(modifier = Modifier.width(8.dp))
-                                        Text("Локальный бэкап (JSON)", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                                        Text(strings.localBackupTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                                     }
                                     Surface(
                                         shape = RoundedCornerShape(6.dp),
                                         color = MintSecondary.copy(alpha = 0.2f)
                                     ) {
-                                        Text("Надежно", color = MintSecondary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                        Text("JSON", color = MintSecondary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = "Сохранение и загрузка конфигураций через встроенный проводник Android",
+                                    text = strings.localBackupDesc,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -759,7 +839,7 @@ fun SettingsDialog(
                                         Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text(
-                                            text = "Сохранить",
+                                            text = strings.btnSaveFile,
                                             style = MaterialTheme.typography.labelLarge,
                                             color = Color.White,
                                             maxLines = 1,
@@ -780,7 +860,7 @@ fun SettingsDialog(
                                         Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text(
-                                            text = "Загрузить",
+                                            text = strings.btnLoadFile,
                                             style = MaterialTheme.typography.labelLarge,
                                             maxLines = 1,
                                             softWrap = false
@@ -798,7 +878,7 @@ fun SettingsDialog(
                                             putExtra(Intent.EXTRA_SUBJECT, "3x-ui Backup")
                                             putExtra(Intent.EXTRA_TEXT, json)
                                         }
-                                        context.startActivity(Intent.createChooser(intent, "Поделиться бэкапом"))
+                                        context.startActivity(Intent.createChooser(intent, "Share Backup"))
                                     },
                                     shape = RoundedCornerShape(10.dp),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp),
@@ -809,7 +889,7 @@ fun SettingsDialog(
                                     Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
                                     Text(
-                                        text = "Поделиться текстом бэкапа",
+                                        text = "Share JSON",
                                         style = MaterialTheme.typography.labelMedium,
                                         maxLines = 1,
                                         softWrap = false
@@ -832,13 +912,13 @@ fun SettingsDialog(
                                     Icon(Icons.Default.FolderShared, contentDescription = null, tint = CyanPrimary, modifier = Modifier.size(20.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
-                                        text = "Синхронизация по WebDAV",
+                                        text = strings.webdavTitle,
                                         style = MaterialTheme.typography.titleMedium,
                                         fontWeight = FontWeight.Bold
                                     )
                                 }
                                 Text(
-                                    text = "Яндекс Диск, Nextcloud, ownCloud или частный сервер",
+                                    text = strings.webdavDesc,
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -846,7 +926,7 @@ fun SettingsDialog(
                                 OutlinedTextField(
                                     value = webdavUrl,
                                     onValueChange = { webdavUrl = it },
-                                    label = { Text("URL WebDAV файла") },
+                                    label = { Text(strings.webdavUrlField) },
                                     placeholder = { Text("https://webdav.yandex.ru/backup.json") },
                                     singleLine = true,
                                     shape = RoundedCornerShape(10.dp),
@@ -857,7 +937,7 @@ fun SettingsDialog(
                                     OutlinedTextField(
                                         value = webdavUser,
                                         onValueChange = { webdavUser = it },
-                                        label = { Text("Логин") },
+                                        label = { Text(strings.webdavUserField) },
                                         singleLine = true,
                                         shape = RoundedCornerShape(10.dp),
                                         modifier = Modifier.weight(1f)
@@ -865,7 +945,7 @@ fun SettingsDialog(
                                     OutlinedTextField(
                                         value = webdavPass,
                                         onValueChange = { webdavPass = it },
-                                        label = { Text("Пароль") },
+                                        label = { Text(strings.webdavPassField) },
                                         singleLine = true,
                                         shape = RoundedCornerShape(10.dp),
                                         visualTransformation = PasswordVisualTransformation(),
@@ -877,7 +957,7 @@ fun SettingsDialog(
                                     Button(
                                         onClick = {
                                             if (webdavUrl.isBlank()) {
-                                                Toast.makeText(context, "Укажите URL WebDAV", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, "URL is required", Toast.LENGTH_SHORT).show()
                                                 return@Button
                                             }
                                             isWebdavLoading = true
@@ -899,7 +979,7 @@ fun SettingsDialog(
                                             Icon(Icons.Default.CloudUpload, contentDescription = null, modifier = Modifier.size(16.dp))
                                             Spacer(modifier = Modifier.width(6.dp))
                                             Text(
-                                                text = "Выгрузить",
+                                                text = strings.btnUpload,
                                                 style = MaterialTheme.typography.labelLarge,
                                                 color = Color.White,
                                                 maxLines = 1,
@@ -911,7 +991,7 @@ fun SettingsDialog(
                                     OutlinedButton(
                                         onClick = {
                                             if (webdavUrl.isBlank()) {
-                                                Toast.makeText(context, "Укажите URL WebDAV", Toast.LENGTH_SHORT).show()
+                                                Toast.makeText(context, "URL is required", Toast.LENGTH_SHORT).show()
                                                 return@OutlinedButton
                                             }
                                             isWebdavLoading = true
@@ -929,7 +1009,7 @@ fun SettingsDialog(
                                         Icon(Icons.Default.CloudDownload, contentDescription = null, modifier = Modifier.size(16.dp))
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text(
-                                            text = "Загрузить",
+                                            text = strings.btnDownload,
                                             style = MaterialTheme.typography.labelLarge,
                                             maxLines = 1,
                                             softWrap = false
@@ -947,7 +1027,7 @@ fun SettingsDialog(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Закрыть")
+                Text(strings.btnCancel)
             }
         }
     )
@@ -956,7 +1036,7 @@ fun SettingsDialog(
         AlertDialog(
             onDismissRequest = { showChangelogDialog = false },
             title = {
-                Text("История изменений", fontWeight = FontWeight.Bold)
+                Text(strings.changelogTitle, fontWeight = FontWeight.Bold)
             },
             text = {
                 LazyColumn(
@@ -1011,7 +1091,7 @@ fun SettingsDialog(
                     onClick = { showChangelogDialog = false },
                     colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary)
                 ) {
-                    Text("Понятно")
+                    Text("OK")
                 }
             }
         )
