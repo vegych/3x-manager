@@ -59,6 +59,11 @@ jobs:
 
       - name: Build Release APK
         run: ./gradlew assembleRelease -PversionCode=${{ github.run_number }} -PversionName=${{ env.VERSION_NAME }} --stacktrace
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/debug.keystore
+          STORE_PASSWORD: android
+          KEY_ALIAS: androiddebugkey
+          KEY_PASSWORD: android
         working-directory: ${{ github.workspace }}
 
       - name: Prepare APK Artifact
