@@ -69,10 +69,22 @@ class TunnelService : Service() {
         }
 
         // Must call startForeground immediately to avoid BackgroundServiceException on Android 8+
-        startForeground(
-            NOTIFICATION_ID,
-            buildNotification("3X-UI Туннель", "Подключение к SSH-серверу...")
-        )
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    buildNotification("3X-UI Туннель", "Подключение к SSH-серверу..."),
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
+                )
+            } else {
+                startForeground(
+                    NOTIFICATION_ID,
+                    buildNotification("3X-UI Туннель", "Подключение к SSH-серверу...")
+                )
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to start foreground notification", e)
+        }
 
         val config = extractConfigFromIntent(intent)
         if (config != null) {

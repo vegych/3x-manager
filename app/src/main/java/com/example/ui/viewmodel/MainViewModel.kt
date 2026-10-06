@@ -49,6 +49,25 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppRepository(application)
     private val prefs = application.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
 
+    init {
+        viewModelScope.launch {
+            TunnelService.tunnelState.collect { state ->
+                if (!state.isRunning) {
+                    val currentList = _openedServers.value
+                    if (currentList.isNotEmpty()) {
+                        val remaining = currentList.filter { !it.useTunnel }
+                        if (remaining.size != currentList.size) {
+                            _openedServers.value = remaining
+                            if (_selectedServer.value?.useTunnel == true) {
+                                _selectedServer.value = remaining.lastOrNull()
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     private val _appLanguage = MutableStateFlow(
         AppLanguage.values().find { it.name == prefs.getString("app_language", AppLanguage.SYSTEM.name) }
             ?: AppLanguage.SYSTEM
@@ -389,7 +408,18 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         selectServer(server, context)
     }
 
-    fun closeServerTab(server: ServerEntity, context: Context? = null) {
+    fun closeServerTab(server: ServerEntity, context: Context? = null, stopTunnelIfActive: Boolean = true) {
+        val activeTunnel = tunnelState.value
+        val isTunnelForThisServer = activeTunnel.isRunning && (
+            activeTunnel.configId == server.id ||
+            activeTunnel.localPort == server.localPort ||
+            (_selectedServer.value?.id == server.id && server.useTunnel)
+        )
+
+        if (stopTunnelIfActive && isTunnelForThisServer && context != null) {
+            TunnelService.stop(context)
+        }
+
         val remaining = _openedServers.value.filter { it.id != server.id }
         _openedServers.value = remaining
         if (_selectedServer.value?.id == server.id) {
@@ -398,19 +428,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 selectServer(nextServer, context)
             } else {
                 _selectedServer.value = null
-                if (context != null && _closePolicy.value != TunnelClosePolicy.NEVER) {
-                    stopTunnel(context)
-                }
             }
         }
     }
 
-    fun closeAllServerTabs(context: Context? = null) {
+    fun closeAllServerTabs(context: Context? = null, stopTunnelIfActive: Boolean = true) {
+        if (stopTunnelIfActive && context != null && tunnelState.value.isRunning) {
+            TunnelService.stop(context)
+        }
         _openedServers.value = emptyList()
         _selectedServer.value = null
-        if (context != null && _closePolicy.value != TunnelClosePolicy.NEVER) {
-            stopTunnel(context)
-        }
     }
 
     fun startTunnelForServer(server: ServerEntity, context: Context) {
@@ -508,7 +535,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun stopTunnel(context: Context) {
+        val currentTunnel = tunnelState.value
+        val activeServerId = currentTunnel.configId
+        val activeServerPort = currentTunnel.localPort
+
         TunnelService.stop(context)
+
+        val targetServer = _openedServers.value.firstOrNull {
+            it.id == activeServerId || it.localPort == activeServerPort || (_selectedServer.value?.id == it.id && it.useTunnel)
+        } ?: _selectedServer.value
+
+        if (targetServer != null) {
+            closeServerTab(targetServer, context = null, stopTunnelIfActive = false)
+        } else {
+            closeAllServerTabs(context = null, stopTunnelIfActive = false)
+        }
     }
 
     private var tunnelServiceInstance: TunnelService? = null

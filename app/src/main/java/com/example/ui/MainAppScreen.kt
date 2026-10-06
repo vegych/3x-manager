@@ -167,6 +167,14 @@ fun MainAppScreen(
     val isDownloadingUpdate by viewModel.isDownloadingUpdate.collectAsStateWithLifecycle()
     val downloadProgress by viewModel.downloadProgress.collectAsStateWithLifecycle()
 
+    LaunchedEffect(selectedServer, openedServers) {
+        if (selectedServer == null || openedServers.isEmpty()) {
+            if (currentScreen == ScreenState.WEB_PANEL) {
+                currentScreen = ScreenState.SERVERS
+            }
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         Scaffold(
             topBar = {
@@ -1228,37 +1236,6 @@ fun SettingsDialog(
                                                 }
                                             }
                                         }
-                                    }
-                                }
-                            }
-                        }
-
-                        // Status of active tunnel with manual stop if running
-                        if (tunnelState.isRunning) {
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = MintSecondary.copy(alpha = 0.12f),
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    modifier = Modifier.padding(12.dp)
-                                ) {
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(strings.activeTunnelCardTitle, fontWeight = FontWeight.Bold, color = MintSecondary, style = MaterialTheme.typography.bodyMedium)
-                                        Text(strings.activeTunnelCardDesc, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    }
-                                    Button(
-                                        onClick = onStopTunnel,
-                                        colors = ButtonDefaults.buttonColors(containerColor = RedAccent),
-                                        shape = RoundedCornerShape(8.dp),
-                                        contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp),
-                                        modifier = Modifier.height(32.dp)
-                                    ) {
-                                        Icon(Icons.Default.PowerSettingsNew, contentDescription = null, modifier = Modifier.size(14.dp))
-                                        Spacer(modifier = Modifier.width(4.dp))
-                                        Text(strings.disconnectButton, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
                                     }
                                 }
                             }
