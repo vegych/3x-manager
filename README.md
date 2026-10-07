@@ -26,24 +26,6 @@ It is tailored for hardened server setups where the 3x-ui web panel is bound str
 
 ---
 
-### 📱 Application Screenshots & Capabilities
-
-<div align="center">
-
-| 1. Main Server List & Termius Cards | 2. 3x-ui Web Panel & Dual View |
-|:---:|:---:|
-| <a href="docs/screenshots/screen_main.png"><img src="docs/screenshots/screen_main.png" alt="Main Servers Screen" width="340"/></a> | <a href="docs/screenshots/screen_webpanel.png"><img src="docs/screenshots/screen_webpanel.png" alt="Web Configurator Screen" width="340"/></a> |
-| **Server Overview & Fast Access**<br>• Termius-style cards with direct **Open** action<br>• 1-Tap IP masking (`203.0.113.***`) for privacy<br>• 3x-ui panel update detector (MHSanaei/3x-ui releases)<br>• Tunnel status indicator & disconnect button<br>• Active tabs counter on the top bar | **Embedded 3x-ui Configurator**<br>• Full Desktop 1280px layout with sidebar & charts<br>• Instant switch to adaptive Mobile mode<br>• Automatic credential injection & login<br>• Real-time SSH tunnel status indicator |
-
-| 3. Slide-Out Server Tabs Drawer | 4. Settings, Backup & Themes |
-|:---:|:---:|
-| <a href="docs/screenshots/screen_tabs_drawer.png"><img src="docs/screenshots/screen_tabs_drawer.png" alt="Open Tabs Drawer" width="340"/></a> | <a href="docs/screenshots/screen_settings.png"><img src="docs/screenshots/screen_settings.png" alt="Settings and Backup Dialog" width="340"/></a> |
-| **Multi-Server Tab Switching**<br>• Slide-out drawer on right edge on any screen<br>• Active server highlight with status dots<br>• Quick individual tab close button (`✕`)<br>• One-click **Close All** and Home shortcuts | **Settings & Cloud Sync**<br>• Language switcher (**Auto / RU / EN**)<br>• Material 3 Themes (**Dark, Light, System**)<br>• WebDAV Cloud (Nextcloud/Yandex Disk) & JSON<br>• In-App GitHub Releases Auto-Updater |
-
-</div>
-
----
-
 ### ✨ Key Features
 
 #### 🛡️ Automated SSH Tunneling & Port Forwarding
@@ -124,24 +106,6 @@ The resulting APK will be generated at:
 **3x manager** — современное, сверхбыстрое и безопасное Android-приложение для управления серверами и веб-панелями **3x-ui** (X-UI / Xray / V2Ray) с встроенным автоматическим SSH-туннелированием.
 
 Разработано специально для конфигураций с повышенными требованиями к безопасности, когда панель 3x-ui привязана исключительно к `127.0.0.1` (localhost) на удаленном сервере и закрыта от внешней сети. Приложение автоматически поднимает защищенный SSH-туннель (проброс портов), открывает панель во встроенном оптимизированном браузере и автоматически авторизуется в ней.
-
----
-
-### 📱 Скриншоты и возможности приложения
-
-<div align="center">
-
-| 1. Главный экран и карточки серверов | 2. Веб-панель 3x-ui (Режимы ПК и Мобильный) |
-|:---:|:---:|
-| <a href="docs/screenshots/screen_main.png"><img src="docs/screenshots/screen_main.png" alt="Главный экран серверов" width="340"/></a> | <a href="docs/screenshots/screen_webpanel.png"><img src="docs/screenshots/screen_webpanel.png" alt="Веб-конфигуратор 3x-ui" width="340"/></a> |
-| **Список серверов и быстрый доступ**<br>• Компактные карточки Termius с кнопкой **«Открыть»**<br>• Скрытие IP-адресов в 1 клик (`203.0.113.***`)<br>• Опрос версий панели 3x-ui (оповещения о релизах MHSanaei/3x-ui)<br>• Статус туннеля и быстрая кнопка отключения<br>• Счетчик открытых вкладок в шапке | **Встроенный конфигуратор 3x-ui**<br>• Полноэкранный режим ПК (1280px) с сайдбаром и графиками<br>• Мгновенное переключение в адаптивный мобильный режим<br>• Автоматическая авторизация (логин и пароль)<br>• Индикатор статуса SSH-туннеля в реальном времени |
-
-| 3. Выезжающее меню открытых вкладок | 4. Настройки, облачный бэкап и темы |
-|:---:|:---:|
-| <a href="docs/screenshots/screen_tabs_drawer.png"><img src="docs/screenshots/screen_tabs_drawer.png" alt="Меню открытых вкладок" width="340"/></a> | <a href="docs/screenshots/screen_settings.png"><img src="docs/screenshots/screen_settings.png" alt="Настройки и Бэкап" width="340"/></a> |
-| **Быстрое переключение между серверами**<br>• Выезжающая справа панель на любом экране<br>• Подсветка активного сервера и статусные точки<br>• Удобное закрытие конкретной вкладки (`✕`)<br>• Кнопка **«Закрыть все»** и возврат в главное меню | **Настройки и Синхронизация**<br>• Переключение языка (**Auto / RU / EN**)<br>• Темы оформления (**Темная, Светлая, Системная**)<br>• Облако WebDAV (Nextcloud, Яндекс Диск) и JSON<br>• Встроенная проверка обновлений с GitHub |
-
-</div>
 
 ---
 

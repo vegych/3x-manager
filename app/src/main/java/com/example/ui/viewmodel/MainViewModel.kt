@@ -49,25 +49,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = AppRepository(application)
     private val prefs = application.getSharedPreferences("app_settings", Context.MODE_PRIVATE)
 
-    init {
-        viewModelScope.launch {
-            TunnelService.tunnelState.collect { state ->
-                if (!state.isRunning) {
-                    val currentList = _openedServers.value
-                    if (currentList.isNotEmpty()) {
-                        val remaining = currentList.filter { !it.useTunnel }
-                        if (remaining.size != currentList.size) {
-                            _openedServers.value = remaining
-                            if (_selectedServer.value?.useTunnel == true) {
-                                _selectedServer.value = remaining.lastOrNull()
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     private val _appLanguage = MutableStateFlow(
         AppLanguage.values().find { it.name == prefs.getString("app_language", AppLanguage.SYSTEM.name) }
             ?: AppLanguage.SYSTEM
@@ -302,6 +283,23 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     _selectedServer.value = def
                     refreshPanelData(def)
                     checkPanelUpdates(def)
+                }
+            }
+        }
+
+        viewModelScope.launch {
+            TunnelService.tunnelState.collect { state ->
+                if (!state.isRunning) {
+                    val currentList = _openedServers.value
+                    if (currentList.isNotEmpty()) {
+                        val remaining = currentList.filter { !it.useTunnel }
+                        if (remaining.size != currentList.size) {
+                            _openedServers.value = remaining
+                            if (_selectedServer.value?.useTunnel == true) {
+                                _selectedServer.value = remaining.lastOrNull()
+                            }
+                        }
+                    }
                 }
             }
         }
