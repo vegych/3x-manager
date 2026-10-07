@@ -33,7 +33,7 @@ jobs:
       - name: Compute Build Version
         run: |
           BUILD_NUM=${{ github.run_number }}
-          GRADLE_VER=$(grep -E 'versionName\s*=\s*' app/build.gradle.kts | head -n 1 | sed -E 's/.*"([^"]+)".*/\1/')
+          GRADLE_VER=$(grep -oE '[0-9]+\.[0-9]+\.[0-9]+' app/build.gradle.kts | head -n 1)
           if [ -z "$GRADLE_VER" ]; then
             GRADLE_VER="1.1.1"
           fi
