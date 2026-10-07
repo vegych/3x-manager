@@ -55,7 +55,7 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build Release APK
-        run: ./gradlew assembleRelease -PversionCode=${{ github.run_number }} -PversionName=${{ env.VERSION_NAME }} --stacktrace
+        run: ./gradlew assembleRelease "-PversionCode=${{ github.run_number }}" "-PversionName=${{ env.VERSION_NAME }}" --stacktrace
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/debug.keystore
           STORE_PASSWORD: android
