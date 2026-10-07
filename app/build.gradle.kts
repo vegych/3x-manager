@@ -16,8 +16,8 @@ android {
     applicationId = "com.aistudio.xuiadmin.portfwd"
     minSdk = 24
     targetSdk = 36
-    val vCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 2
-    val vName = (project.findProperty("versionName") as? String) ?: "1.1.0"
+    val vCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 3
+    val vName = (project.findProperty("versionName") as? String) ?: "1.1.1"
     versionCode = vCode
     versionName = vName
 
