@@ -107,11 +107,15 @@ fun RightTabsDrawer(
             visible = isOpen,
             enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
             exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
-            modifier = Modifier.align(Alignment.CenterEnd)
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(vertical = 4.dp)
         ) {
             Surface(
                 modifier = Modifier
-                    .width(320.dp)
+                    .width(260.dp)
                     .fillMaxHeight(),
                 shape = RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp),
                 color = MaterialTheme.colorScheme.surface,
@@ -121,9 +125,7 @@ fun RightTabsDrawer(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .statusBarsPadding()
-                        .navigationBarsPadding()
-                        .padding(16.dp)
+                        .padding(horizontal = 14.dp, vertical = 12.dp)
                 ) {
                     // Header: Title, Badge, and Close Drawer Button
                     Row(
