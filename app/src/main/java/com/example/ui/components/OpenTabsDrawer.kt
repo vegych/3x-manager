@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -109,9 +110,9 @@ fun RightTabsDrawer(
         ) {
             Surface(
                 modifier = Modifier
-                    .width(320.dp)
+                    .width(260.dp)
                     .fillMaxHeight(),
-                shape = RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp),
+                shape = RoundedCornerShape(topStart = 18.dp, bottomStart = 18.dp),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 8.dp,
                 shadowElevation = 12.dp
@@ -119,7 +120,7 @@ fun RightTabsDrawer(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp)
+                        .padding(12.dp)
                 ) {
                     // Header: Title, Badge, and Close Drawer Button
                     Row(
@@ -130,22 +131,22 @@ fun RightTabsDrawer(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Box(
                                 modifier = Modifier
-                                    .size(36.dp)
-                                    .background(CyanPrimary.copy(alpha = 0.15f), RoundedCornerShape(10.dp)),
+                                    .size(32.dp)
+                                    .background(CyanPrimary.copy(alpha = 0.15f), RoundedCornerShape(8.dp)),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Layers,
                                     contentDescription = null,
                                     tint = CyanPrimary,
-                                    modifier = Modifier.size(20.dp)
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
-                            Spacer(modifier = Modifier.width(10.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
                             Column {
                                 Text(
                                     text = strings.openTabsTitle,
-                                    style = MaterialTheme.typography.titleMedium,
+                                    style = MaterialTheme.typography.titleSmall,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(

@@ -13,11 +13,11 @@ android {
   compileSdk { version = release(36) { minorApiLevel = 1 } }
 
   defaultConfig {
-    applicationId = "com.aistudio.xuiadmin.portfwd"
+    applicationId = "com.threex.manager"
     minSdk = 24
     targetSdk = 36
-    val vCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 6
-    val vName = (project.findProperty("versionName") as? String) ?: "1.1.4"
+    val vCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 7
+    val vName = (project.findProperty("versionName") as? String) ?: "1.1.5"
     versionCode = vCode
     versionName = vName
 
