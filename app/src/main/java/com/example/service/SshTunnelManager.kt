@@ -11,11 +11,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.bouncycastle.jce.provider.BouncyCastleProvider
 import java.security.Security
+import java.util.concurrent.ConcurrentHashMap
 
 class SshTunnelManager {
     private val tag = "SshTunnelManager"
-    private var jsch: JSch? = null
-    private var session: Session? = null
+    private val sessions = ConcurrentHashMap<Long, Session>()
 
     init {
         try {
@@ -30,13 +30,25 @@ class SshTunnelManager {
     }
 
     val isRunning: Boolean
-        get() = session?.isConnected == true
+        get() = sessions.values.any { it.isConnected }
+
+    fun isRunning(configId: Long): Boolean {
+        return sessions[configId]?.isConnected == true
+    }
 
     suspend fun startTunnel(config: TunnelConfigEntity): Result<Int> = withContext(Dispatchers.IO) {
-        stopTunnel()
+        // If tunnel for this config is already active and connected, return success immediately
+        val existing = sessions[config.id]
+        if (existing != null && existing.isConnected) {
+            Log.i(tag, "SSH Tunnel for config ${config.id} (${config.name}) is already active on port ${config.localPort}")
+            return@withContext Result.success(config.localPort)
+        }
+
+        // Clean up any stale session for this config
+        stopTunnel(config.id)
+
         try {
             val jschInstance = JSch()
-            jsch = jschInstance
 
             val port = if (config.sshPort > 0) config.sshPort else 22
             val user = if (config.sshUser.isNotBlank()) config.sshUser.trim() else "root"
@@ -58,8 +70,8 @@ class SshTunnelManager {
                 } else null
 
                 try {
-                    jschInstance.addIdentity("user_ssh_key", keyBytes, null, passphraseBytes)
-                    Log.i(tag, "Added private key identity to JSch")
+                    jschInstance.addIdentity("user_ssh_key_${config.id}", keyBytes, null, passphraseBytes)
+                    Log.i(tag, "Added private key identity to JSch for config ${config.id}")
                 } catch (e: Exception) {
                     Log.e(tag, "Failed to parse SSH key", e)
                     return@withContext Result.failure(Exception("Не удалось прочитать SSH-ключ: ${e.message}"))
@@ -69,7 +81,7 @@ class SshTunnelManager {
             // 2. Create Session
             val sshSession = jschInstance.getSession(user, host, port)
 
-            // 3. UserInfo & UIKeyboardInteractive handler (Essential for OpenSSH password & keyboard-interactive prompts)
+            // 3. UserInfo & UIKeyboardInteractive handler
             val userInfo = object : UserInfo, UIKeyboardInteractive {
                 override fun getPassphrase(): String = config.sshKeyPassphrase
                 override fun getPassword(): String = config.sshPassword
@@ -118,7 +130,7 @@ class SshTunnelManager {
             sshSession.serverAliveInterval = 25000
             sshSession.serverAliveCountMax = 4
 
-            Log.i(tag, "Connecting to SSH $user@$host:$port (AuthType: ${if (isKeyAuth) "KEY" else "PASSWORD"})...")
+            Log.i(tag, "Connecting SSH $user@$host:$port (configId=${config.id}, AuthType: ${if (isKeyAuth) "KEY" else "PASSWORD"})...")
             sshSession.connect(15000)
 
             // 5. Port Forwarding
@@ -127,7 +139,7 @@ class SshTunnelManager {
             val localPort = if (config.localPort > 0) config.localPort else targetPort
 
             val bindHost = if (config.bindToLan) "0.0.0.0" else "127.0.0.1"
-            Log.d(tag, "Binding PortForwardingL: $bindHost:$localPort -> $targetHost:$targetPort")
+            Log.d(tag, "Binding PortForwardingL for config ${config.id}: $bindHost:$localPort -> $targetHost:$targetPort")
 
             val boundPort = try {
                 sshSession.setPortForwardingL(bindHost, localPort, targetHost, targetPort)
@@ -136,13 +148,13 @@ class SshTunnelManager {
                 sshSession.setPortForwardingL(localPort, targetHost, targetPort)
             }
 
-            session = sshSession
-            Log.i(tag, "SSH Tunnel successfully active on $bindHost:$boundPort -> $targetHost:$targetPort")
+            sessions[config.id] = sshSession
+            Log.i(tag, "SSH Tunnel #${config.id} successfully active on $bindHost:$boundPort -> $targetHost:$targetPort")
             Result.success(boundPort)
         } catch (e: JSchException) {
             val msg = e.message ?: "JSchException"
-            Log.e(tag, "SSH Connection failed: $msg", e)
-            stopTunnel()
+            Log.e(tag, "SSH Connection failed for config ${config.id}: $msg", e)
+            stopTunnel(config.id)
             val friendlyMsg = when {
                 msg.contains("Auth fail", ignoreCase = true) ->
                     "Ошибка авторизации: не подошел ${if (config.sshAuthType == "KEY") "SSH-ключ" else "пароль"} для ${config.sshUser}@${config.sshHost}"
@@ -158,24 +170,35 @@ class SshTunnelManager {
             }
             Result.failure(Exception(friendlyMsg))
         } catch (e: Exception) {
-            Log.e(tag, "Failed to start SSH tunnel", e)
-            stopTunnel()
+            Log.e(tag, "Failed to start SSH tunnel for config ${config.id}", e)
+            stopTunnel(config.id)
             Result.failure(e)
         }
     }
 
-    fun stopTunnel() {
+    fun stopTunnel(configId: Long) {
         try {
-            session?.let { s ->
+            sessions.remove(configId)?.let { s ->
                 if (s.isConnected) {
                     s.disconnect()
+                    Log.i(tag, "Disconnected SSH session for config $configId")
                 }
             }
         } catch (e: Exception) {
-            Log.e(tag, "Error disconnecting SSH session", e)
-        } finally {
-            session = null
-            jsch = null
+            Log.e(tag, "Error disconnecting SSH session for config $configId", e)
         }
+    }
+
+    fun stopAllTunnels() {
+        for ((id, session) in sessions) {
+            try {
+                if (session.isConnected) {
+                    session.disconnect()
+                }
+            } catch (e: Exception) {
+                Log.e(tag, "Error disconnecting SSH session $id", e)
+            }
+        }
+        sessions.clear()
     }
 }

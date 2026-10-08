@@ -112,8 +112,13 @@ fun WebPanelScreen(
     val desktopUserAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
 
     val isTunnelRequired = server?.useTunnel == true
-    val isTunnelRunning = tunnelState?.isRunning == true
-    val isTunnelError = tunnelState?.isError == true
+    val isServerTunnelRunning = remember(server, tunnelState) {
+        if (server == null || !server.useTunnel) false
+        else com.example.service.TunnelService.isTunnelRunning(server.id) ||
+             (tunnelState?.isRunning == true && (tunnelState.configId == server.id || tunnelState.localPort == server.localPort))
+    }
+    val isTunnelRunning = if (isTunnelRequired) isServerTunnelRunning else true
+    val isTunnelError = tunnelState?.isError == true && (tunnelState?.configId == server?.id || tunnelState?.localPort == server?.localPort)
     val isConnecting = isTunnelRequired && !isTunnelRunning && !isTunnelError
     val canShowControls = !isTunnelRequired || isTunnelRunning
 
@@ -121,12 +126,16 @@ fun WebPanelScreen(
         server?.sshHost?.let { com.example.ui.viewmodel.MainViewModel.maskIp(it, maskIp) } ?: ""
     }
 
+    val effectivePort = remember(server, tunnelState) {
+        if (server != null && server.localPort > 0) server.localPort else (tunnelState?.localPort ?: server?.port ?: 2053)
+    }
+
     // Target URL calculation
-    val effectiveUrl = remember(initialUrl, server, isTunnelRunning, tunnelState?.localPort) {
-        if (server?.useTunnel == true && isTunnelRunning && tunnelState != null) {
+    val effectiveUrl = remember(initialUrl, server, isTunnelRunning, effectivePort) {
+        if (server?.useTunnel == true) {
             val path = if (server.basePath.isNotBlank()) "/${server.basePath.trim('/')}" else ""
             val scheme = if (server.useHttps) "https" else "http"
-            "$scheme://127.0.0.1:${tunnelState.localPort}$path"
+            "$scheme://127.0.0.1:$effectivePort$path"
         } else if (initialUrl.isNotBlank()) {
             initialUrl
         } else {

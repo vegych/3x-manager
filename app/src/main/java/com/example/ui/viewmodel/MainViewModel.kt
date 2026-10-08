@@ -286,23 +286,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
-
-        viewModelScope.launch {
-            TunnelService.tunnelState.collect { state ->
-                if (!state.isRunning) {
-                    val currentList = _openedServers.value
-                    if (currentList.isNotEmpty()) {
-                        val remaining = currentList.filter { !it.useTunnel }
-                        if (remaining.size != currentList.size) {
-                            _openedServers.value = remaining
-                            if (_selectedServer.value?.useTunnel == true) {
-                                _selectedServer.value = remaining.lastOrNull()
-                            }
-                        }
-                    }
-                }
-            }
-        }
     }
 
     fun updateLanIp() {
@@ -380,7 +363,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun selectServer(server: ServerEntity, context: Context? = null) {
         _selectedServer.value = server
-        // Add to opened servers list if not present or update it
         val currentList = _openedServers.value
         val exists = currentList.any { it.id == server.id }
         if (!exists) {
@@ -393,8 +375,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             repository.recordServerUsage(server.id)
         }
         if (server.useTunnel && context != null) {
-            val currentTunnel = tunnelState.value
-            if (!currentTunnel.isRunning || currentTunnel.localPort != server.localPort) {
+            if (!TunnelService.isTunnelRunning(server.id)) {
                 val tunnelConfig = server.toTunnelConfig()
                 startTunnel(tunnelConfig, context)
             }
@@ -407,15 +388,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun closeServerTab(server: ServerEntity, context: Context? = null, stopTunnelIfActive: Boolean = true) {
-        val activeTunnel = tunnelState.value
-        val isTunnelForThisServer = activeTunnel.isRunning && (
-            activeTunnel.configId == server.id ||
-            activeTunnel.localPort == server.localPort ||
-            (_selectedServer.value?.id == server.id && server.useTunnel)
-        )
-
-        if (stopTunnelIfActive && isTunnelForThisServer && context != null) {
-            TunnelService.stop(context)
+        if (stopTunnelIfActive && server.useTunnel && context != null) {
+            TunnelService.stop(context, server.id)
         }
 
         val remaining = _openedServers.value.filter { it.id != server.id }
@@ -431,8 +405,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun closeAllServerTabs(context: Context? = null, stopTunnelIfActive: Boolean = true) {
-        if (stopTunnelIfActive && context != null && tunnelState.value.isRunning) {
-            TunnelService.stop(context)
+        if (stopTunnelIfActive && context != null) {
+            TunnelService.stopAll(context)
         }
         _openedServers.value = emptyList()
         _selectedServer.value = null
@@ -444,8 +418,8 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun toggleServerTunnel(server: ServerEntity, context: Context) {
-        if (tunnelState.value.isRunning && (tunnelState.value.configId == server.id || tunnelState.value.localPort == server.localPort)) {
-            stopTunnel(context)
+        if (TunnelService.isTunnelRunning(server.id)) {
+            stopTunnel(context, server.id)
         } else {
             startTunnelForServer(server, context)
         }
@@ -457,8 +431,14 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             _isLoading.value = true
             updateLanIp()
 
-            val activeTunnel = tunnelState.value
-            val effectiveTunnelPort = if (activeTunnel.isRunning) activeTunnel.localPort else null
+            val effectiveTunnelPort = if (target.useTunnel) {
+                if (TunnelService.isTunnelRunning(target.id)) target.localPort else null
+            } else null
+
+            if (target.useTunnel && effectiveTunnelPort == null) {
+                _isLoading.value = false
+                return@launch
+            }
 
             // Ping
             val ping = repository.pingServer(target, effectiveTunnelPort)
@@ -532,21 +512,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         TunnelService.start(context, config)
     }
 
-    fun stopTunnel(context: Context) {
-        val currentTunnel = tunnelState.value
-        val activeServerId = currentTunnel.configId
-        val activeServerPort = currentTunnel.localPort
-
-        TunnelService.stop(context)
-
-        val targetServer = _openedServers.value.firstOrNull {
-            it.id == activeServerId || it.localPort == activeServerPort || (_selectedServer.value?.id == it.id && it.useTunnel)
-        } ?: _selectedServer.value
-
-        if (targetServer != null) {
-            closeServerTab(targetServer, context = null, stopTunnelIfActive = false)
+    fun stopTunnel(context: Context, configId: Long? = null) {
+        if (configId != null && configId > 0) {
+            TunnelService.stop(context, configId)
         } else {
-            closeAllServerTabs(context = null, stopTunnelIfActive = false)
+            val currentId = _selectedServer.value?.id
+            if (currentId != null && currentId > 0) {
+                TunnelService.stop(context, currentId)
+            } else {
+                TunnelService.stopAll(context)
+            }
         }
     }
 

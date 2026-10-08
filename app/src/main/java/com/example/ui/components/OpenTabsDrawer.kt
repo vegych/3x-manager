@@ -226,7 +226,8 @@ fun RightTabsDrawer(
                         } else {
                             items(openedServers, key = { it.id }) { server ->
                                 val isCurrent = selectedServer?.id == server.id
-                                val isServerTunnelRunning = tunnelState.isRunning && (tunnelState.configId == server.id || tunnelState.localPort == server.localPort)
+                                val isServerTunnelRunning = com.example.service.TunnelService.isTunnelRunning(server.id) ||
+                                        (tunnelState.isRunning && (tunnelState.configId == server.id || tunnelState.localPort == server.localPort))
                                 val displayHost = MainViewModel.maskIp(server.host, maskIp)
 
                                 Card(

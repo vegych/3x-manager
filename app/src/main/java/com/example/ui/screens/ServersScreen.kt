@@ -194,8 +194,8 @@ fun ServersScreen(
                 contentType = { "server_card" }
             ) { server ->
                 val isSelected = selectedServer?.id == server.id
-                val isTunnelActive = tunnelState?.isRunning == true &&
-                        (tunnelState.configId == server.id || tunnelState.localPort == server.localPort)
+                val isTunnelActive = com.example.service.TunnelService.isTunnelRunning(server.id) ||
+                        (tunnelState?.isRunning == true && (tunnelState.configId == server.id || tunnelState.localPort == server.localPort))
 
                 ServerCardSimple(
                     server = server,
@@ -286,18 +286,19 @@ fun ServerCardSimple(
     val borderColor = if (isSelected) CyanPrimary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
     val borderWidth = if (isSelected) 2.dp else 1.dp
 
-    val displaySshHost = remember(server.sshHost, maskIp) {
-        com.example.ui.viewmodel.MainViewModel.maskIp(server.sshHost, maskIp)
+    val displayHost = remember(server.host, maskIp) {
+        com.example.ui.viewmodel.MainViewModel.maskIp(server.host, maskIp)
     }
-    val displayEffectiveUrl = remember(server, maskIp) {
-        if (server.useTunnel) {
-            strings.sshForwardRoute(server.name)
-        } else {
-            val maskedHost = com.example.ui.viewmodel.MainViewModel.maskIp(server.host, maskIp)
-            val scheme = if (server.useHttps) "https" else "http"
-            val path = if (server.basePath.isNotBlank()) "/${server.basePath.trim('/')}" else ""
-            "$scheme://$maskedHost:${server.port}$path"
-        }
+    val displaySshHost = remember(server.sshHost, server.host, maskIp) {
+        val target = if (server.sshHost.isNotBlank()) server.sshHost else server.host
+        com.example.ui.viewmodel.MainViewModel.maskIp(target, maskIp)
+    }
+    val sshUser = if (server.sshUser.isNotBlank()) server.sshUser else "root"
+
+    val subtitleText = if (server.useTunnel) {
+        "$sshUser@$displaySshHost"
+    } else {
+        displayHost
     }
 
     Card(
@@ -333,7 +334,7 @@ fun ServerCardSimple(
                             overflow = TextOverflow.Ellipsis
                         )
                         Text(
-                            text = displayEffectiveUrl,
+                            text = subtitleText,
                             style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             fontSize = 12.sp,
@@ -343,15 +344,15 @@ fun ServerCardSimple(
                     }
                 }
 
-                if (server.useTunnel) {
+                if (server.useTunnel && isTunnelActive) {
                     Surface(
                         shape = RoundedCornerShape(8.dp),
-                        color = if (isTunnelActive) MintSecondary.copy(alpha = 0.15f) else AmberAccent.copy(alpha = 0.15f),
+                        color = MintSecondary.copy(alpha = 0.15f),
                         modifier = Modifier.padding(start = 6.dp)
                     ) {
                         Text(
-                            text = if (isTunnelActive) strings.tunnelOnBadge else strings.autoForwardBadge,
-                            color = if (isTunnelActive) MintSecondary else AmberAccent,
+                            text = strings.tunnelOnBadge,
+                            color = MintSecondary,
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
@@ -360,70 +361,19 @@ fun ServerCardSimple(
                 }
             }
 
-            // Route summary (clean intermediate host without raw ports)
-            if (server.useTunnel && server.sshHost.isNotBlank()) {
-                Spacer(modifier = Modifier.height(10.dp))
-                Surface(
-                    shape = RoundedCornerShape(8.dp),
-                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                    ) {
-                        Text(
-                            text = strings.sshTunnelBadge,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.SemiBold,
-                            color = CyanPrimary
-                        )
-                        Icon(
-                            Icons.Default.ArrowForward,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .padding(horizontal = 6.dp)
-                                .size(12.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        Text(
-                            text = "${server.sshUser}@$displaySshHost",
-                            style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(14.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Action Buttons
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.End,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Button(
-                    onClick = onSelect,
-                    colors = ButtonDefaults.buttonColors(containerColor = CyanPrimary),
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 6.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    modifier = Modifier.height(38.dp)
-                ) {
-                    Icon(Icons.Default.Login, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(strings.actionOpen, fontSize = 13.sp, fontWeight = FontWeight.SemiBold)
+                IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Edit, contentDescription = strings.actionEdit, modifier = Modifier.size(18.dp))
                 }
-
-                Row {
-                    IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.Edit, contentDescription = strings.actionEdit, modifier = Modifier.size(18.dp))
-                    }
-                    IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                        Icon(Icons.Default.Delete, contentDescription = strings.actionDelete, tint = RedAccent, modifier = Modifier.size(18.dp))
-                    }
+                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
+                    Icon(Icons.Default.Delete, contentDescription = strings.actionDelete, tint = RedAccent, modifier = Modifier.size(18.dp))
                 }
             }
         }

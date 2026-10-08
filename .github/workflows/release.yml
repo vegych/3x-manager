@@ -80,11 +80,15 @@ jobs:
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           echo "## 🚀 Релиз 3x manager v${{ env.VERSION_NAME }}" > RELEASE_CHANGELOG.md
           echo "" >> RELEASE_CHANGELOG.md
-          echo "### 📝 Что нового в этом обновлении:" >> RELEASE_CHANGELOG.md
-          if [ -n "$PREV_TAG" ]; then
-            git log ${PREV_TAG}..HEAD --pretty=format:"* %s" --no-merges >> RELEASE_CHANGELOG.md
+          if [ -f CHANGELOG.md ]; then
+            cat CHANGELOG.md >> RELEASE_CHANGELOG.md
           else
-            git log -n 12 --pretty=format:"* %s" --no-merges >> RELEASE_CHANGELOG.md
+            echo "### 📝 Что нового в этом обновлении:" >> RELEASE_CHANGELOG.md
+            if [ -n "$PREV_TAG" ]; then
+              git log ${PREV_TAG}..HEAD --pretty=format:"* %s" --no-merges >> RELEASE_CHANGELOG.md
+            else
+              git log -n 12 --pretty=format:"* %s" --no-merges >> RELEASE_CHANGELOG.md
+            fi
           fi
           echo "" >> RELEASE_CHANGELOG.md
           echo "" >> RELEASE_CHANGELOG.md

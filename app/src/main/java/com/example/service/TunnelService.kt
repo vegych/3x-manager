@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.concurrent.ConcurrentHashMap
 
 data class ActiveTunnelState(
     val isRunning: Boolean = false,
@@ -61,14 +62,26 @@ class TunnelService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action ?: ACTION_START_TUNNEL
+        val configId = intent?.getLongExtra(EXTRA_CONFIG_ID, -1L) ?: -1L
 
-        if (action == ACTION_STOP_TUNNEL) {
-            stopTunnelInternal()
+        if (action == ACTION_STOP_ALL_TUNNELS) {
+            stopTunnelInternal(null)
             stopSelf()
+            return START_NOT_STICKY
+        } else if (action == ACTION_STOP_TUNNEL) {
+            if (configId > 0) {
+                stopTunnelInternal(configId)
+                if (activeTunnels.isEmpty()) {
+                    stopSelf()
+                }
+            } else {
+                stopTunnelInternal(null)
+                stopSelf()
+            }
             return START_NOT_STICKY
         }
 
-        // Must call startForeground immediately to avoid BackgroundServiceException on Android 8+
+        // Must call startForeground immediately on Android 8+
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 startForeground(
@@ -90,21 +103,22 @@ class TunnelService : Service() {
         if (config != null) {
             startTunnelInternal(config)
         } else {
-            Log.w(TAG, "No config found in intent, keeping idle")
+            Log.w(TAG, "No config found in intent")
         }
 
         return START_NOT_STICKY
     }
 
     private fun extractConfigFromIntent(intent: Intent?): TunnelConfigEntity? {
-        if (intent == null) return currentConfig
+        if (intent == null) return null
 
-        val sshHost = intent.getStringExtra(EXTRA_SSH_HOST) ?: return currentConfig
+        val sshHost = intent.getStringExtra(EXTRA_SSH_HOST) ?: return null
         val localPort = intent.getIntExtra(EXTRA_LOCAL_PORT, 2370)
         val targetPort = intent.getIntExtra(EXTRA_TARGET_PORT, localPort)
+        val configId = intent.getLongExtra(EXTRA_CONFIG_ID, 0L)
 
         return TunnelConfigEntity(
-            id = intent.getLongExtra(EXTRA_CONFIG_ID, 0L),
+            id = configId,
             name = intent.getStringExtra(EXTRA_CONFIG_NAME) ?: "SSH Tunnel",
             type = intent.getStringExtra(EXTRA_TYPE) ?: "SSH",
             localPort = localPort,
@@ -127,10 +141,15 @@ class TunnelService : Service() {
     }
 
     private fun startTunnelInternal(config: TunnelConfigEntity) {
-        currentConfig = config
         val lanIp = NetworkUtils.getLocalIpAddress()
 
-        _tunnelState.value = ActiveTunnelState(
+        // Check if already active
+        if (activeTunnels[config.id]?.isRunning == true && sshManager.isRunning(config.id)) {
+            Log.i(TAG, "Tunnel #${config.id} is already running on port ${config.localPort}")
+            return
+        }
+
+        val initState = ActiveTunnelState(
             isRunning = false,
             type = config.type,
             configId = config.id,
@@ -142,31 +161,42 @@ class TunnelService : Service() {
             statusMessage = "Подключение к ${config.sshHost}...",
             isError = false
         )
+        activeTunnels[config.id] = initState
+        activeStatesMap[config.id] = true
+        _tunnelState.value = initState
 
         serviceScope.launch {
             try {
                 if (config.type == "SSH") {
-                    Log.i(TAG, "Starting SSH tunnel: ${config.sshUser}@${config.sshHost}:${config.sshPort} forward :${config.localPort} -> ${config.remoteTargetHost}:${config.remoteTargetPort}")
+                    Log.i(TAG, "Starting SSH tunnel #${config.id}: ${config.sshUser}@${config.sshHost}:${config.sshPort} forward :${config.localPort} -> ${config.remoteTargetHost}:${config.remoteTargetPort}")
                     val result = sshManager.startTunnel(config)
                     if (result.isSuccess) {
                         val boundPort = result.getOrNull() ?: config.localPort
-                        _tunnelState.value = _tunnelState.value.copy(
+                        val activeState = initState.copy(
                             isRunning = true,
                             localPort = boundPort,
                             statusMessage = "Активен ➔ ${config.name}",
                             isError = false,
                             startedAt = System.currentTimeMillis()
                         )
-                        updateNotification("3X-UI Туннель", "Активен: ${config.name}")
-                        Log.i(TAG, "SSH Tunnel connected successfully on port $boundPort")
+                        activeTunnels[config.id] = activeState
+                        activeStatesMap[config.id] = true
+                        _tunnelState.value = activeState
+
+                        val runningCount = activeTunnels.values.count { it.isRunning }
+                        updateNotification("3X-UI Туннели", "Активно туннелей в фоне: $runningCount")
+                        Log.i(TAG, "SSH Tunnel #${config.id} connected successfully on port $boundPort")
                     } else {
                         val errorMsg = result.exceptionOrNull()?.message ?: "Не удалось подключиться по SSH"
-                        Log.e(TAG, "SSH Tunnel connection failed: $errorMsg")
-                        _tunnelState.value = _tunnelState.value.copy(
+                        Log.e(TAG, "SSH Tunnel #${config.id} connection failed: $errorMsg")
+                        val errState = initState.copy(
                             isRunning = false,
                             statusMessage = errorMsg,
                             isError = true
                         )
+                        activeTunnels[config.id] = errState
+                        activeStatesMap[config.id] = false
+                        _tunnelState.value = errState
                         updateNotification("Ошибка проброса", errorMsg)
                     }
                 } else {
@@ -178,52 +208,78 @@ class TunnelService : Service() {
                         bindToLan = config.bindToLan
                     )
                     if (result.isSuccess) {
-                        _tunnelState.value = _tunnelState.value.copy(
+                        val activeState = initState.copy(
                             isRunning = true,
                             statusMessage = "TCP реле активно на :${config.localPort}",
                             isError = false,
                             startedAt = System.currentTimeMillis()
                         )
+                        activeTunnels[config.id] = activeState
+                        activeStatesMap[config.id] = true
+                        _tunnelState.value = activeState
                         updateNotification("TCP Реле активно", "Порт: ${config.localPort}")
                     } else {
                         val errorMsg = result.exceptionOrNull()?.message ?: "Ошибка привязки порта"
-                        _tunnelState.value = _tunnelState.value.copy(
+                        val errState = initState.copy(
                             isRunning = false,
                             statusMessage = errorMsg,
                             isError = true
                         )
+                        activeTunnels[config.id] = errState
+                        activeStatesMap[config.id] = false
+                        _tunnelState.value = errState
                         updateNotification("Ошибка TCP реле", errorMsg)
                     }
                 }
             } catch (e: Exception) {
-                Log.e(TAG, "Unexpected error in tunnel", e)
-                _tunnelState.value = _tunnelState.value.copy(
+                Log.e(TAG, "Unexpected error in tunnel #${config.id}", e)
+                val errState = initState.copy(
                     isRunning = false,
                     statusMessage = e.message ?: "Ошибка подключения",
                     isError = true
                 )
+                activeTunnels[config.id] = errState
+                activeStatesMap[config.id] = false
+                _tunnelState.value = errState
                 updateNotification("Ошибка", e.message ?: "Ошибка подключения")
             }
         }
     }
 
-    fun stopTunnel() {
-        stopTunnelInternal()
+    fun stopTunnel(configId: Long? = null) {
+        stopTunnelInternal(configId)
     }
 
-    private fun stopTunnelInternal() {
-        sshManager.stopTunnel()
-        tcpRelayManager.stopRelay()
-        currentConfig = null
-        _tunnelState.value = ActiveTunnelState(
-            isRunning = false,
-            statusMessage = "Остановлен",
-            isError = false,
-            activeClients = 0
-        )
-        try {
-            stopForeground(STOP_FOREGROUND_REMOVE)
-        } catch (_: Exception) {}
+    private fun stopTunnelInternal(configId: Long? = null) {
+        if (configId != null && configId > 0) {
+            sshManager.stopTunnel(configId)
+            activeTunnels.remove(configId)
+            activeStatesMap.remove(configId)
+            Log.i(TAG, "Stopped tunnel for configId $configId")
+        } else {
+            sshManager.stopAllTunnels()
+            tcpRelayManager.stopRelay()
+            activeTunnels.clear()
+            activeStatesMap.clear()
+            Log.i(TAG, "Stopped all tunnels")
+        }
+
+        if (activeTunnels.isEmpty()) {
+            _tunnelState.value = ActiveTunnelState(
+                isRunning = false,
+                statusMessage = "Остановлен",
+                isError = false,
+                activeClients = 0
+            )
+            try {
+                stopForeground(STOP_FOREGROUND_REMOVE)
+            } catch (_: Exception) {}
+        } else {
+            val lastActive = activeTunnels.values.lastOrNull { it.isRunning } ?: activeTunnels.values.last()
+            _tunnelState.value = lastActive
+            val runningCount = activeTunnels.values.count { it.isRunning }
+            updateNotification("3X-UI Туннели", "Активно туннелей в фоне: $runningCount")
+        }
     }
 
     private fun createNotificationChannel() {
@@ -233,7 +289,7 @@ class TunnelService : Service() {
                 "3X-UI Проброс портов",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
-                description = "Статус фонового SSH-туннеля"
+                description = "Статус фоновых SSH-туннелей"
             }
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
@@ -273,15 +329,15 @@ class TunnelService : Service() {
         val prefs = getSharedPreferences("app_settings", Context.MODE_PRIVATE)
         val policyName = prefs.getString("tunnel_close_policy", com.example.ui.viewmodel.TunnelClosePolicy.ON_APP_CLOSE.name)
         if (policyName != com.example.ui.viewmodel.TunnelClosePolicy.NEVER.name) {
-            Log.i(TAG, "Task removed by user with policy $policyName. Stopping tunnel and service.")
-            stopTunnelInternal()
+            Log.i(TAG, "Task removed by user with policy $policyName. Stopping all tunnels.")
+            stopTunnelInternal(null)
             stopSelf()
         }
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        stopTunnelInternal()
+        stopTunnelInternal(null)
         serviceScope.cancel()
     }
 
@@ -292,6 +348,7 @@ class TunnelService : Service() {
 
         const val ACTION_START_TUNNEL = "com.example.service.START_TUNNEL"
         const val ACTION_STOP_TUNNEL = "com.example.service.STOP_TUNNEL"
+        const val ACTION_STOP_ALL_TUNNELS = "com.example.service.STOP_ALL_TUNNELS"
 
         const val EXTRA_CONFIG_ID = "extra_config_id"
         const val EXTRA_CONFIG_NAME = "extra_config_name"
@@ -308,13 +365,21 @@ class TunnelService : Service() {
         const val EXTRA_TARGET_HOST = "extra_target_host"
         const val EXTRA_TARGET_PORT = "extra_target_port"
 
-        private var currentConfig: TunnelConfigEntity? = null
+        private val activeTunnels = ConcurrentHashMap<Long, ActiveTunnelState>()
+        private val activeStatesMap = ConcurrentHashMap<Long, Boolean>()
 
         private val _tunnelState = MutableStateFlow(ActiveTunnelState())
         val tunnelState: StateFlow<ActiveTunnelState> = _tunnelState.asStateFlow()
 
+        fun isTunnelRunning(configId: Long): Boolean {
+            return activeStatesMap[configId] == true || activeTunnels[configId]?.isRunning == true
+        }
+
+        fun getTunnelState(configId: Long): ActiveTunnelState? {
+            return activeTunnels[configId]
+        }
+
         fun start(context: Context, config: TunnelConfigEntity) {
-            currentConfig = config
             val intent = Intent(context, TunnelService::class.java).apply {
                 action = ACTION_START_TUNNEL
                 putExtra(EXTRA_CONFIG_ID, config.id)
@@ -343,15 +408,22 @@ class TunnelService : Service() {
             }
         }
 
-        fun stop(context: Context) {
+        fun stop(context: Context, configId: Long? = null) {
             val intent = Intent(context, TunnelService::class.java).apply {
-                action = ACTION_STOP_TUNNEL
+                action = if (configId != null && configId > 0) ACTION_STOP_TUNNEL else ACTION_STOP_ALL_TUNNELS
+                if (configId != null) putExtra(EXTRA_CONFIG_ID, configId)
             }
             try {
                 context.startService(intent)
             } catch (_: Exception) {}
+        }
+
+        fun stopAll(context: Context) {
+            val intent = Intent(context, TunnelService::class.java).apply {
+                action = ACTION_STOP_ALL_TUNNELS
+            }
             try {
-                context.stopService(intent)
+                context.startService(intent)
             } catch (_: Exception) {}
         }
     }
