@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -172,7 +173,7 @@ fun WebPanelScreen(
     }
 
     if (server == null && initialUrl.isBlank()) {
-        Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(modifier = modifier.fillMaxSize().statusBarsPadding(), contentAlignment = Alignment.Center) {
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.padding(24.dp)) {
                 Icon(Icons.Default.Dns, contentDescription = null, modifier = Modifier.size(56.dp), tint = CyanPrimary)
                 Spacer(modifier = Modifier.height(16.dp))
@@ -193,7 +194,7 @@ fun WebPanelScreen(
     }
 
     Column(modifier = modifier.fillMaxSize()) {
-        // Ultra-compact header bar (only ~44dp)
+        // Ultra-compact header bar (only ~44dp) with status bar insets protection
         Surface(
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 3.dp,
@@ -203,6 +204,7 @@ fun WebPanelScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .padding(horizontal = 4.dp, vertical = 2.dp)
             ) {
                 // Back to servers list
