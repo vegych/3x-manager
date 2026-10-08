@@ -105,7 +105,7 @@ fun WebPanelScreen(
     var canGoBack by remember { mutableStateOf(false) }
     var canGoForward by remember { mutableStateOf(false) }
     var pageProgress by remember { mutableFloatStateOf(0f) }
-    var isLoading by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(true) }
     var isDesktopMode by remember { mutableStateOf(false) }
 
     val defaultUserAgent = remember { WebSettings.getDefaultUserAgent(context) }
@@ -147,16 +147,19 @@ fun WebPanelScreen(
         if (effectiveUrl.isNotBlank() && effectiveUrl != currentUrl) {
             currentUrl = effectiveUrl
             if (!isTunnelRequired || isTunnelRunning) {
-                webViewInstance?.loadUrl(effectiveUrl)
+                if (webViewInstance?.url != effectiveUrl) {
+                    webViewInstance?.loadUrl(effectiveUrl)
+                }
             }
         }
     }
 
     // Auto-load as soon as tunnel starts
     LaunchedEffect(isTunnelRunning) {
-        if (isTunnelRunning) {
-            delay(300)
-            webViewInstance?.loadUrl(effectiveUrl)
+        if (isTunnelRunning && effectiveUrl.isNotBlank()) {
+            if (webViewInstance?.url != effectiveUrl) {
+                webViewInstance?.loadUrl(effectiveUrl)
+            }
         }
     }
 
@@ -475,13 +478,15 @@ fun WebPanelScreen(
 
                 // 3. Fullscreen WebView (Rendered and active ONLY when tunnel is running or not required)
                 else -> {
-                    AndroidView(
-                        factory = { ctx ->
-                            WebView(ctx).apply {
-                                layoutParams = ViewGroup.LayoutParams(
-                                    ViewGroup.LayoutParams.MATCH_PARENT,
-                                    ViewGroup.LayoutParams.MATCH_PARENT
-                                )
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        AndroidView(
+                            factory = { ctx ->
+                                WebView(ctx).apply {
+                                    setBackgroundColor(android.graphics.Color.parseColor("#0E141E"))
+                                    layoutParams = ViewGroup.LayoutParams(
+                                        ViewGroup.LayoutParams.MATCH_PARENT,
+                                        ViewGroup.LayoutParams.MATCH_PARENT
+                                    )
 
                                 val cookieManager = CookieManager.getInstance()
                                 cookieManager.setAcceptCookie(true)
@@ -632,7 +637,31 @@ fun WebPanelScreen(
                         },
                         modifier = Modifier.fillMaxSize()
                     )
+
+                    if (isLoading) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color(0xFF0E141E)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                CircularProgressIndicator(
+                                    color = CyanPrimary,
+                                    strokeWidth = 3.dp,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "Загрузка панели...",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
                 }
+            }
             }
         }
     }

@@ -81,7 +81,21 @@ jobs:
           echo "## 🚀 Релиз 3x manager v${{ env.VERSION_NAME }}" > RELEASE_CHANGELOG.md
           echo "" >> RELEASE_CHANGELOG.md
           if [ -f CHANGELOG.md ]; then
-            cat CHANGELOG.md >> RELEASE_CHANGELOG.md
+            python3 -c "
+import re, os
+if os.path.exists('CHANGELOG.md'):
+    content = open('CHANGELOG.md', 'r', encoding='utf-8').read()
+    matches = list(re.finditer(r'^##\s+\[', content, re.MULTILINE))
+    if matches:
+        start = matches[0].start()
+        end = matches[1].start() if len(matches) > 1 else len(content)
+        latest_notes = content[start:end].strip()
+        with open('RELEASE_CHANGELOG.md', 'a', encoding='utf-8') as f:
+            f.write(latest_notes + '\n\n')
+    else:
+        with open('RELEASE_CHANGELOG.md', 'a', encoding='utf-8') as f:
+            f.write(content + '\n\n')
+"
           else
             echo "### 📝 Что нового в этом обновлении:" >> RELEASE_CHANGELOG.md
             if [ -n "$PREV_TAG" ]; then

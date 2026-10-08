@@ -221,7 +221,7 @@ fun MainAppScreen(
                             // Компактная кнопка отключения туннелей прямо в основном меню
                             if (tunnelState.isRunning) {
                                 Surface(
-                                    onClick = { viewModel.stopTunnel(context, tunnelState.configId) },
+                                    onClick = { viewModel.stopAllTunnels(context) },
                                     shape = RoundedCornerShape(10.dp),
                                     color = RedAccent.copy(alpha = 0.15f),
                                     border = BorderStroke(1.dp, RedAccent.copy(alpha = 0.45f)),
@@ -357,7 +357,7 @@ fun MainAppScreen(
                             sortMode = sortMode,
                             strings = strings,
                             onSortModeChange = { viewModel.setSortMode(it) },
-                            onStopTunnel = { viewModel.stopTunnel(context) },
+                            onStopTunnel = { viewModel.stopAllTunnels(context) },
                             onSelectServer = { server ->
                                 viewModel.openServerTab(server, context)
                                 webPanelUrl = server.getEffectiveUrl()

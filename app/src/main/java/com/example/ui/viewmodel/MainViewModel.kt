@@ -512,6 +512,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         TunnelService.start(context, config)
     }
 
+    fun stopAllTunnels(context: Context) {
+        TunnelService.stopAll(context)
+    }
+
     fun stopTunnel(context: Context, configId: Long? = null) {
         if (configId != null && configId > 0) {
             TunnelService.stop(context, configId)
