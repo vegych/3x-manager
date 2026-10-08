@@ -221,7 +221,7 @@ fun MainAppScreen(
                             // Компактная кнопка отключения туннелей прямо в основном меню
                             if (tunnelState.isRunning) {
                                 Surface(
-                                    onClick = { viewModel.stopTunnel(context) },
+                                    onClick = { viewModel.stopTunnel(context, tunnelState.configId) },
                                     shape = RoundedCornerShape(10.dp),
                                     color = RedAccent.copy(alpha = 0.15f),
                                     border = BorderStroke(1.dp, RedAccent.copy(alpha = 0.45f)),

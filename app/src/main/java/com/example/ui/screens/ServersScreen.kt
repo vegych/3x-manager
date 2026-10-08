@@ -111,7 +111,7 @@ fun ServersScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             item(key = "header_sort") {
                 Spacer(modifier = Modifier.height(4.dp))
@@ -303,7 +303,7 @@ fun ServerCardSimple(
 
     Card(
         onClick = onSelect,
-        shape = RoundedCornerShape(18.dp),
+        shape = RoundedCornerShape(14.dp),
         border = androidx.compose.foundation.BorderStroke(borderWidth, borderColor),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surface
@@ -312,68 +312,72 @@ fun ServerCardSimple(
             .fillMaxWidth()
             .testTag("server_card_${server.id}")
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            // Header with Name (Label) and Badges
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp)
+        ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.weight(1f)
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                    if (server.useTunnel) {
-                        TermiusBadgeL()
-                        Spacer(modifier = Modifier.width(10.dp))
-                    }
-                    Column {
+                if (server.useTunnel) {
+                    TermiusBadgeL()
+                    Spacer(modifier = Modifier.width(8.dp))
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
                         Text(
                             text = server.name,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp,
                             letterSpacing = (-0.3).sp,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
-                        Text(
-                            text = subtitleText,
-                            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontSize = 12.sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        if (server.useTunnel && isTunnelActive) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MintSecondary.copy(alpha = 0.18f)
+                            ) {
+                                Text(
+                                    text = strings.tunnelOnBadge,
+                                    color = MintSecondary,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 10.sp,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
                     }
-                }
-
-                if (server.useTunnel && isTunnelActive) {
-                    Surface(
-                        shape = RoundedCornerShape(8.dp),
-                        color = MintSecondary.copy(alpha = 0.15f),
-                        modifier = Modifier.padding(start = 6.dp)
-                    ) {
-                        Text(
-                            text = strings.tunnelOnBadge,
-                            color = MintSecondary,
-                            style = MaterialTheme.typography.labelSmall,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                        )
-                    }
+                    Text(
+                        text = subtitleText,
+                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // Action Buttons
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.End,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.padding(start = 4.dp)
             ) {
-                IconButton(onClick = onEdit, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.Edit, contentDescription = strings.actionEdit, modifier = Modifier.size(18.dp))
+                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Edit, contentDescription = strings.actionEdit, modifier = Modifier.size(16.dp))
                 }
-                IconButton(onClick = onDelete, modifier = Modifier.size(36.dp)) {
-                    Icon(Icons.Default.Delete, contentDescription = strings.actionDelete, tint = RedAccent, modifier = Modifier.size(18.dp))
+                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Default.Delete, contentDescription = strings.actionDelete, tint = RedAccent, modifier = Modifier.size(16.dp))
                 }
             }
         }
