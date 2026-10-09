@@ -15,14 +15,21 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.displayCutout
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.systemBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -75,6 +82,7 @@ fun RightTabsDrawer(
     onCloseAllTabs: () -> Unit,
     onGoToHome: () -> Unit,
     onCloseDrawer: () -> Unit,
+    topInset: androidx.compose.ui.unit.Dp = 0.dp,
     modifier: Modifier = Modifier
 ) {
     if (!isOpen && openedServers.isEmpty()) return
@@ -82,6 +90,31 @@ fun RightTabsDrawer(
     BackHandler(enabled = isOpen) {
         onCloseDrawer()
     }
+
+    val statusBarsTop = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val systemBarsTop = WindowInsets.systemBars.asPaddingValues().calculateTopPadding()
+    val safeDrawingTop = WindowInsets.safeDrawing.asPaddingValues().calculateTopPadding()
+    val cutoutTop = WindowInsets.displayCutout.asPaddingValues().calculateTopPadding()
+
+    val effectiveTopPadding = maxOf(
+        topInset,
+        statusBarsTop,
+        systemBarsTop,
+        safeDrawingTop,
+        cutoutTop,
+        52.dp
+    )
+
+    val navBarsBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val systemBarsBottom = WindowInsets.systemBars.asPaddingValues().calculateBottomPadding()
+    val safeDrawingBottom = WindowInsets.safeDrawing.asPaddingValues().calculateBottomPadding()
+
+    val effectiveBottomPadding = maxOf(
+        navBarsBottom,
+        systemBarsBottom,
+        safeDrawingBottom,
+        20.dp
+    )
 
     Box(modifier = modifier.fillMaxSize()) {
         // Scrim overlay with tap to dismiss
@@ -121,9 +154,12 @@ fun RightTabsDrawer(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .statusBarsPadding()
-                        .navigationBarsPadding()
-                        .padding(horizontal = 14.dp, vertical = 12.dp)
+                        .padding(
+                            top = effectiveTopPadding + 8.dp,
+                            bottom = effectiveBottomPadding + 8.dp,
+                            start = 14.dp,
+                            end = 14.dp
+                        )
                 ) {
                     // Header: Title, Badge, and Close Drawer Button
                     Row(

@@ -143,6 +143,7 @@ fun MainAppScreen(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     var isTabsDrawerOpen by remember { mutableStateOf(false) }
+    var scaffoldTopPadding by remember { mutableStateOf(52.dp) }
 
     var currentScreen by remember { mutableStateOf(ScreenState.SERVERS) }
     var webPanelUrl by remember { mutableStateOf("") }
@@ -342,6 +343,10 @@ fun MainAppScreen(
             },
             modifier = Modifier.fillMaxSize()
         ) { innerPadding ->
+            val topP = innerPadding.calculateTopPadding()
+            if (topP > 0.dp && topP != scaffoldTopPadding) {
+                scaffoldTopPadding = topP
+            }
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -415,6 +420,7 @@ fun MainAppScreen(
             tunnelState = tunnelState,
             maskIp = maskIp,
             strings = strings,
+            topInset = scaffoldTopPadding,
             onSelectServer = { server ->
                 viewModel.selectServer(server, context)
                 webPanelUrl = server.getEffectiveUrl()
