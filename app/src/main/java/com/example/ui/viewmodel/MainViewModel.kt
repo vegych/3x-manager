@@ -286,6 +286,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 }
             }
         }
+
+        viewModelScope.launch {
+            TunnelService.tunnelStoppedEvent.collect { stoppedConfigId ->
+                if (stoppedConfigId != null && stoppedConfigId > 0) {
+                    val serverToClose = _openedServers.value.find { it.id == stoppedConfigId }
+                    if (serverToClose != null) {
+                        closeServerTab(serverToClose, context = null, stopTunnelIfActive = false)
+                    }
+                } else {
+                    val tunnelServers = _openedServers.value.filter { it.useTunnel }
+                    tunnelServers.forEach { s ->
+                        closeServerTab(s, context = null, stopTunnelIfActive = false)
+                    }
+                }
+            }
+        }
     }
 
     fun updateLanIp() {
@@ -514,18 +530,22 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     fun stopAllTunnels(context: Context) {
         TunnelService.stopAll(context)
+        val tunnelServers = _openedServers.value.filter { it.useTunnel }
+        tunnelServers.forEach { server ->
+            closeServerTab(server, context = null, stopTunnelIfActive = false)
+        }
     }
 
     fun stopTunnel(context: Context, configId: Long? = null) {
-        if (configId != null && configId > 0) {
-            TunnelService.stop(context, configId)
-        } else {
-            val currentId = _selectedServer.value?.id
-            if (currentId != null && currentId > 0) {
-                TunnelService.stop(context, currentId)
-            } else {
-                TunnelService.stopAll(context)
+        val targetId = configId ?: _selectedServer.value?.id
+        if (targetId != null && targetId > 0) {
+            TunnelService.stop(context, targetId)
+            val server = _openedServers.value.find { it.id == targetId }
+            if (server != null) {
+                closeServerTab(server, context = null, stopTunnelIfActive = false)
             }
+        } else {
+            stopAllTunnels(context)
         }
     }
 

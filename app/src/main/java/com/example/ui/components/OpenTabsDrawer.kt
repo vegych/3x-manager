@@ -107,15 +107,11 @@ fun RightTabsDrawer(
             visible = isOpen,
             enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
             exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
-            modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .statusBarsPadding()
-                .navigationBarsPadding()
-                .padding(vertical = 4.dp)
+            modifier = Modifier.align(Alignment.CenterEnd)
         ) {
             Surface(
                 modifier = Modifier
-                    .width(260.dp)
+                    .width(280.dp)
                     .fillMaxHeight(),
                 shape = RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp),
                 color = MaterialTheme.colorScheme.surface,
@@ -125,6 +121,8 @@ fun RightTabsDrawer(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .statusBarsPadding()
+                        .navigationBarsPadding()
                         .padding(horizontal = 14.dp, vertical = 12.dp)
                 ) {
                     // Header: Title, Badge, and Close Drawer Button
@@ -133,7 +131,10 @@ fun RightTabsDrawer(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
                             Box(
                                 modifier = Modifier
                                     .size(32.dp)
@@ -148,16 +149,19 @@ fun RightTabsDrawer(
                                 )
                             }
                             Spacer(modifier = Modifier.width(8.dp))
-                            Column {
+                            Column(modifier = Modifier.weight(1f, fill = false)) {
                                 Text(
                                     text = strings.openTabsTitle,
                                     style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.Bold
+                                    fontWeight = FontWeight.Bold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                                 Text(
                                     text = strings.openTabsCount(openedServers.size),
                                     style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    maxLines = 1
                                 )
                             }
                         }
@@ -269,14 +273,16 @@ fun RightTabsDrawer(
                                         Column(modifier = Modifier.weight(1f)) {
                                             Row(
                                                 verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                                modifier = Modifier.fillMaxWidth()
                                             ) {
                                                 Text(
                                                     text = server.name,
                                                     style = MaterialTheme.typography.bodyMedium,
                                                     fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Medium,
                                                     maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    modifier = Modifier.weight(1f, fill = false)
                                                 )
                                                 if (isCurrent) {
                                                     Surface(

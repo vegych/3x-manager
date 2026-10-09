@@ -18,8 +18,11 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import java.util.concurrent.ConcurrentHashMap
@@ -351,6 +354,9 @@ class TunnelService : Service() {
         private val _tunnelState = MutableStateFlow(ActiveTunnelState())
         val tunnelState: StateFlow<ActiveTunnelState> = _tunnelState.asStateFlow()
 
+        private val _tunnelStoppedEvent = MutableSharedFlow<Long?>(extraBufferCapacity = 32)
+        val tunnelStoppedEvent: SharedFlow<Long?> = _tunnelStoppedEvent.asSharedFlow()
+
         fun isTunnelRunning(configId: Long): Boolean {
             return activeTunnels[configId]?.isRunning == true
         }
@@ -364,12 +370,14 @@ class TunnelService : Service() {
                 sshManager.stopTunnel(configId)
                 activeTunnels.remove(configId)
                 activeStatesMap.remove(configId)
+                _tunnelStoppedEvent.tryEmit(configId)
                 Log.i(TAG, "Stopped tunnel for configId $configId")
             } else {
                 sshManager.stopAllTunnels()
                 tcpRelayManager.stopRelay()
                 activeTunnels.clear()
                 activeStatesMap.clear()
+                _tunnelStoppedEvent.tryEmit(null)
                 Log.i(TAG, "Stopped all tunnels")
             }
 
