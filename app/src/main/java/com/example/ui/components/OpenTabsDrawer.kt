@@ -136,17 +136,24 @@ fun RightTabsDrawer(
         }
 
         // Right-Side Sliding Panel: Slides in and out strictly from the RIGHT edge
+        // Crucial fix: Apply statusBarsPadding and navigationBarsPadding directly to the Surface container
+        // with an additional safety margin and rounded corners on all sides (card-like drawer) so it NEVER
+        // renders underneath the transparent status bar icons (clock, battery, Wi-Fi).
         AnimatedVisibility(
             visible = isOpen,
             enter = slideInHorizontally(initialOffsetX = { it }) + fadeIn(),
             exit = slideOutHorizontally(targetOffsetX = { it }) + fadeOut(),
-            modifier = Modifier.align(Alignment.CenterEnd)
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .padding(top = 8.dp, bottom = 8.dp, end = 6.dp)
         ) {
             Surface(
                 modifier = Modifier
                     .width(280.dp)
                     .fillMaxHeight(),
-                shape = RoundedCornerShape(topStart = 20.dp, bottomStart = 20.dp),
+                shape = RoundedCornerShape(20.dp),
                 color = MaterialTheme.colorScheme.surface,
                 tonalElevation = 8.dp,
                 shadowElevation = 12.dp
@@ -154,12 +161,7 @@ fun RightTabsDrawer(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(
-                            top = effectiveTopPadding + 8.dp,
-                            bottom = effectiveBottomPadding + 8.dp,
-                            start = 14.dp,
-                            end = 14.dp
-                        )
+                        .padding(horizontal = 14.dp, vertical = 14.dp)
                 ) {
                     // Header: Title, Badge, and Close Drawer Button
                     Row(
