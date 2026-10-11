@@ -11,6 +11,8 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Toast
+import androidx.compose.runtime.key
+import com.example.ui.web.ServerWebViewStore
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -106,8 +108,8 @@ fun WebPanelScreen(
     var canGoBack by remember { mutableStateOf(false) }
     var canGoForward by remember { mutableStateOf(false) }
     var pageProgress by remember { mutableFloatStateOf(0f) }
-    var isLoading by remember { mutableStateOf(true) }
-    var isDesktopMode by remember { mutableStateOf(false) }
+    var isLoading by remember { mutableStateOf(false) }
+    var isDesktopMode by remember(server?.id) { mutableStateOf(server?.id?.let { ServerWebViewStore.isDesktopMode(it) } ?: false) }
 
     val defaultUserAgent = remember { WebSettings.getDefaultUserAgent(context) }
     val desktopUserAgent = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
@@ -148,17 +150,19 @@ fun WebPanelScreen(
         if (effectiveUrl.isNotBlank() && effectiveUrl != currentUrl) {
             currentUrl = effectiveUrl
             if (!isTunnelRequired || isTunnelRunning) {
-                if (webViewInstance?.url != effectiveUrl) {
+                val currentWvUrl = webViewInstance?.url
+                if (currentWvUrl.isNullOrBlank() || currentWvUrl == "about:blank") {
                     webViewInstance?.loadUrl(effectiveUrl)
                 }
             }
         }
     }
 
-    // Auto-load as soon as tunnel starts
+    // Auto-load as soon as tunnel starts if webView is blank
     LaunchedEffect(isTunnelRunning) {
         if (isTunnelRunning && effectiveUrl.isNotBlank()) {
-            if (webViewInstance?.url != effectiveUrl) {
+            val currentWvUrl = webViewInstance?.url
+            if (currentWvUrl.isNullOrBlank() || currentWvUrl == "about:blank") {
                 webViewInstance?.loadUrl(effectiveUrl)
             }
         }
@@ -287,46 +291,9 @@ fun WebPanelScreen(
                 if (canShowControls) {
                     IconButton(
                         onClick = {
-                            val newMode = !isDesktopMode
-                            isDesktopMode = newMode
-                            val desktopUA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36"
-                            val mobileUA = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
-                            webViewInstance?.settings?.apply {
-                                userAgentString = if (newMode) desktopUA else mobileUA
-                                useWideViewPort = true
-                                loadWithOverviewMode = true
+                            if (server != null) {
+                                isDesktopMode = ServerWebViewStore.toggleDesktopMode(server.id)
                             }
-                            // Inject viewport and min-width directly to force desktop 3x-ui Ant Design layout
-                            val js = if (newMode) {
-                                """
-                                (function() {
-                                    var meta = document.querySelector('meta[name="viewport"]');
-                                    if (!meta) {
-                                        meta = document.createElement('meta');
-                                        meta.name = 'viewport';
-                                        document.head.appendChild(meta);
-                                    }
-                                    meta.setAttribute('content', 'width=1280, initial-scale=0.35, minimum-scale=0.25, maximum-scale=3.0, user-scalable=yes');
-                                    if (document.documentElement) document.documentElement.style.minWidth = '1280px';
-                                    if (document.body) document.body.style.minWidth = '1280px';
-                                    window.dispatchEvent(new Event('resize'));
-                                })();
-                                """.trimIndent()
-                            } else {
-                                """
-                                (function() {
-                                    var meta = document.querySelector('meta[name="viewport"]');
-                                    if (meta) {
-                                        meta.setAttribute('content', 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no');
-                                    }
-                                    if (document.documentElement) document.documentElement.style.minWidth = '';
-                                    if (document.body) document.body.style.minWidth = '';
-                                    window.dispatchEvent(new Event('resize'));
-                                })();
-                                """.trimIndent()
-                            }
-                            webViewInstance?.evaluateJavascript(js, null)
-                            webViewInstance?.reload()
                         },
                         modifier = Modifier.size(36.dp)
                     ) {
@@ -339,7 +306,9 @@ fun WebPanelScreen(
                     }
 
                     IconButton(
-                        onClick = { webViewInstance?.reload() },
+                        onClick = {
+                            server?.id?.let { ServerWebViewStore.getWebView(it)?.reload() } ?: webViewInstance?.reload()
+                        },
                         modifier = Modifier.size(36.dp)
                     ) {
                         Icon(Icons.Default.Refresh, contentDescription = strings.reloadTooltip, modifier = Modifier.size(20.dp))
@@ -480,164 +449,45 @@ fun WebPanelScreen(
                 // 3. Fullscreen WebView (Rendered and active ONLY when tunnel is running or not required)
                 else -> {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        AndroidView(
-                            factory = { ctx ->
-                                WebView(ctx).apply {
-                                    setBackgroundColor(android.graphics.Color.parseColor("#0E141E"))
-                                    layoutParams = ViewGroup.LayoutParams(
-                                        ViewGroup.LayoutParams.MATCH_PARENT,
-                                        ViewGroup.LayoutParams.MATCH_PARENT
-                                    )
-
-                                val cookieManager = CookieManager.getInstance()
-                                cookieManager.setAcceptCookie(true)
-                                cookieManager.setAcceptThirdPartyCookies(this, true)
-
-                                settings.apply {
-                                    javaScriptEnabled = true
-                                    domStorageEnabled = true
-                                    databaseEnabled = true
-                                    saveFormData = true
-                                    useWideViewPort = true
-                                    loadWithOverviewMode = true
-                                    setSupportZoom(true)
-                                    builtInZoomControls = true
-                                    displayZoomControls = false
-                                    mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                                    userAgentString = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36"
-                                }
-
-                                webChromeClient = object : WebChromeClient() {
-                                    override fun onProgressChanged(view: WebView?, newProgress: Int) {
-                                        pageProgress = newProgress / 100f
-                                        isLoading = newProgress < 100
-                                    }
-                                }
-
-                                webViewClient = object : WebViewClient() {
-                                    override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
-                                        url?.let { currentUrl = it }
-                                        canGoBack = view?.canGoBack() == true
-                                        canGoForward = view?.canGoForward() == true
-                                        isLoading = true
-                                    }
-
-                                    override fun onPageFinished(view: WebView?, url: String?) {
-                                        url?.let { currentUrl = it }
-                                        canGoBack = view?.canGoBack() == true
-                                        canGoForward = view?.canGoForward() == true
-                                        isLoading = false
-
-                                        CookieManager.getInstance().flush()
-
-                                        if (isDesktopMode) {
-                                            val desktopScript = """
-                                                (function() {
-                                                    var meta = document.querySelector('meta[name="viewport"]');
-                                                    if (!meta) {
-                                                        meta = document.createElement('meta');
-                                                        meta.name = 'viewport';
-                                                        document.head.appendChild(meta);
-                                                    }
-                                                    meta.setAttribute('content', 'width=1280, initial-scale=0.35, minimum-scale=0.25, maximum-scale=3.0, user-scalable=yes');
-                                                    if (document.documentElement) document.documentElement.style.minWidth = '1280px';
-                                                    if (document.body) document.body.style.minWidth = '1280px';
-                                                    window.dispatchEvent(new Event('resize'));
-                                                })();
-                                            """.trimIndent()
-                                            view?.evaluateJavascript(desktopScript, null)
-                                        }
-
-                                        // Auto-login credentials for 3x-ui Vue 3
-                                        if (server != null && server.username.isNotBlank()) {
-                                            val autoLoginScript = """
-                                                (function() {
-                                                    var targetUser = '${server.username}';
-                                                    var targetPass = '${server.password}';
-                                                    if (!targetUser) return;
-
-                                                    function fillVueInput(el, val) {
-                                                        if (!el) return;
-                                                        var descriptor = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
-                                                        if (descriptor && descriptor.set) {
-                                                            descriptor.set.call(el, val);
-                                                        } else {
-                                                            el.value = val;
-                                                        }
-                                                        el.dispatchEvent(new Event('input', { bubbles: true }));
-                                                        el.dispatchEvent(new Event('change', { bubbles: true }));
-                                                    }
-
-                                                    function tryInject() {
-                                                        var passEl = document.querySelector('input[type="password"]');
-                                                        if (!passEl) return false;
-
-                                                        var userEl = document.querySelector('input#username, input[name="username"], input[type="text"]:not([type="hidden"])');
-                                                        if (userEl && passEl) {
-                                                            fillVueInput(userEl, targetUser);
-                                                            fillVueInput(passEl, targetPass);
-
-                                                            setTimeout(function() {
-                                                                var btn = document.querySelector('button[type="submit"], button.ant-btn-primary, button.login-btn');
-                                                                if (btn && !btn.disabled) {
-                                                                    btn.click();
-                                                                }
-                                                            }, 250);
-                                                            return true;
-                                                        }
-                                                        return false;
-                                                    }
-
-                                                    if (!tryInject()) {
-                                                        var tries = 0;
-                                                        var interval = setInterval(function() {
-                                                            tries++;
-                                                            if (tryInject() || tries > 12) {
-                                                                clearInterval(interval);
-                                                            }
-                                                        }, 350);
-                                                    }
-                                                })();
-                                            """.trimIndent()
-                                            view?.evaluateJavascript(autoLoginScript, null)
-                                        }
-
-                                        // Auto-detect 3x-ui panel version from page DOM/window
-                                        val versionDetectScript = """
-                                            (function() {
-                                                return window.X_UI_CUR_VER || 
-                                                       (document.querySelector('.ant-layout-header')?.innerText || '').match(/v\d+\.\d+\.\d+/)?.[0] ||
-                                                       (document.body?.innerText || '').match(/3[Xx]-[Uu][Ii]\s+v?(\d+\.\d+\.\d+)/i)?.[1] ||
-                                                       '';
-                                            })();
-                                        """.trimIndent()
-                                        view?.evaluateJavascript(versionDetectScript) { res ->
-                                            val clean = res?.trim('"', '\'', ' ') ?: ""
-                                            if (clean.isNotBlank() && clean != "null" && clean != "undefined") {
-                                                onPanelVersionDetected?.invoke(clean)
+                        key(server?.id) {
+                            AndroidView(
+                                factory = { ctx ->
+                                    if (server != null) {
+                                        ServerWebViewStore.getOrCreateWebView(
+                                            context = ctx,
+                                            server = server,
+                                            initialUrl = effectiveUrl,
+                                            onProgressChanged = { newProgress ->
+                                                pageProgress = newProgress / 100f
+                                                isLoading = newProgress < 100
+                                            },
+                                            onPageStarted = { url ->
+                                                currentUrl = url
+                                                isLoading = true
+                                            },
+                                            onPageFinished = { url ->
+                                                currentUrl = url
+                                                isLoading = false
+                                            },
+                                            onPanelVersionDetected = { ver ->
+                                                onPanelVersionDetected?.invoke(ver)
                                             }
+                                        )
+                                    } else {
+                                        WebView(ctx).apply {
+                                            settings.javaScriptEnabled = true
+                                            loadUrl(effectiveUrl)
                                         }
                                     }
-
-                                    @SuppressLint("WebViewClientOnReceivedSslError")
-                                    override fun onReceivedSslError(
-                                        view: WebView?,
-                                        handler: SslErrorHandler?,
-                                        error: SslError?
-                                    ) {
-                                        handler?.proceed()
-                                    }
-                                }
-
-                                loadUrl(effectiveUrl)
-                                webViewInstance = this
-                            }
-                        },
-                        update = { webView ->
-                            webViewInstance = webView
-                        },
-                        modifier = Modifier.fillMaxSize()
-                    )
+                                },
+                                update = { webView ->
+                                    webViewInstance = webView
+                                    canGoBack = webView.canGoBack()
+                                    canGoForward = webView.canGoForward()
+                                },
+                                modifier = Modifier.fillMaxSize()
+                            )
+                        }
 
                     if (isLoading) {
                         Box(

@@ -407,6 +407,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (stopTunnelIfActive && server.useTunnel && context != null) {
             TunnelService.stop(context, server.id)
         }
+        com.example.ui.web.ServerWebViewStore.destroyWebView(server.id)
 
         val remaining = _openedServers.value.filter { it.id != server.id }
         _openedServers.value = remaining
@@ -424,6 +425,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (stopTunnelIfActive && context != null) {
             TunnelService.stopAll(context)
         }
+        com.example.ui.web.ServerWebViewStore.destroyAll()
         _openedServers.value = emptyList()
         _selectedServer.value = null
     }
