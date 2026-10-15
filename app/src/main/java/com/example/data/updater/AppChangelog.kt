@@ -24,6 +24,35 @@ data class ChangelogEntry(
 object AppChangelog {
     val history = listOf(
         ChangelogEntry(
+            version = "v1.1.14",
+            date = "Октябрь 2026",
+            releaseType = ReleaseType.IMPROVEMENT,
+            summary = "Индивидуальное API автообновление для каждого сервера, выбор даты в календаре и чистый интерфейс карточек",
+            categories = listOf(
+                ChangelogCategory(
+                    title = "⚡ Индивидуальное автообновление API",
+                    items = listOf(
+                        "Настройка интервала обновления баланса (от 2 часов) отдельно для каждого сервера (Timeweb Cloud, Selectel, Beget)",
+                        "Быстрые пресеты часов (2ч, 3ч, 4ч, 6ч, 12ч, 24ч) и кастомный ввод интервала"
+                    )
+                ),
+                ChangelogCategory(
+                    title = "📅 Выбор дат и календаря",
+                    items = listOf(
+                        "Для фиксированного дня месяца и цикла оставили удобный выбор прямо в календаре",
+                        "Убрана дублирующая кнопка «Продлить» (+1 мес)"
+                    )
+                ),
+                ChangelogCategory(
+                    title = "🎨 Читаемость и интерфейс",
+                    items = listOf(
+                        "Высокий контраст кнопок и переключателей с четким 12sp шрифтом без переносов",
+                        "Бейдж с остатком дней аккуратно размещен в правой части карточки сервера рядом с кнопкой редактирования"
+                    )
+                )
+            )
+        ),
+        ChangelogEntry(
             version = "v1.1.2",
             date = "Октябрь 2026",
             releaseType = ReleaseType.IMPROVEMENT,
