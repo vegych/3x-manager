@@ -35,7 +35,20 @@ data class ServerEntity(
     val isOnline: Boolean = false,
     val usageCount: Int = 0,
     val lastConnectedAt: Long = 0L,
-    val createdAt: Long = System.currentTimeMillis()
+    val createdAt: Long = System.currentTimeMillis(),
+
+    // Billing & Renewal Tracking
+    val billingType: String = "NONE", // NONE, MONTHLY_DAY, INTERVAL_DAYS, TIMEWEB_CLOUD, SELECTEL
+    val billingDayOfMonth: Int = 1,   // 1..31
+    val billingIntervalDays: Int = 30, // 30, 31, etc.
+    val billingLastPaidDate: Long = 0L,
+    val billingCostMonthly: Double = 0.0,
+    val billingApiKey: String = "",
+    val cachedBalance: Double? = null,
+    val cachedCurrency: String = "RUB",
+    val cachedHoursLeft: Int? = null,
+    val cachedDaysLeft: Int? = null,
+    val billingLastCheckedAt: Long = 0L
 ) {
     fun getEffectiveUrl(tunnelLocalPort: Int? = null): String {
         val cleanPath = basePath.trim().trim('/')

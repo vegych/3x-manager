@@ -16,8 +16,8 @@ android {
     applicationId = "com.threex.manager"
     minSdk = 24
     targetSdk = 36
-    val vCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 14
-    val vName = (project.findProperty("versionName") as? String) ?: "1.1.12"
+    val vCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 15
+    val vName = (project.findProperty("versionName") as? String) ?: "1.1.13"
     versionCode = vCode
     versionName = vName
 

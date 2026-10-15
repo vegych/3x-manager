@@ -27,10 +27,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccountBalanceWallet
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowForward
+import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.ContentPaste
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -39,6 +41,7 @@ import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Login
 import androidx.compose.material.icons.filled.PowerSettingsNew
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.VpnKey
@@ -68,11 +71,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
+import com.example.data.billing.BillingManager
+import com.example.data.billing.BillingType
+import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.data.db.ServerEntity
@@ -100,6 +108,8 @@ fun ServersScreen(
     onSelectServer: (ServerEntity) -> Unit,
     onSaveServer: (ServerEntity) -> Unit,
     onDeleteServer: (ServerEntity) -> Unit,
+    onRefreshBilling: ((ServerEntity) -> Unit)? = null,
+    onExtendBilling: ((ServerEntity) -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     var showDialog by remember { mutableStateOf(false) }
@@ -208,7 +218,9 @@ fun ServersScreen(
                         editingServer = server
                         showDialog = true
                     },
-                    onDelete = { serverToDelete = server }
+                    onDelete = { serverToDelete = server },
+                    onRefreshBilling = { onRefreshBilling?.invoke(server) },
+                    onExtendBilling = { onExtendBilling?.invoke(server) }
                 )
             }
 
@@ -281,7 +293,9 @@ fun ServerCardSimple(
     strings: Strings = RussianStrings,
     onSelect: () -> Unit,
     onEdit: () -> Unit,
-    onDelete: () -> Unit
+    onDelete: () -> Unit,
+    onRefreshBilling: (() -> Unit)? = null,
+    onExtendBilling: (() -> Unit)? = null
 ) {
     val borderColor = if (isSelected) CyanPrimary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f)
     val borderWidth = if (isSelected) 2.dp else 1.dp
@@ -299,6 +313,10 @@ fun ServerCardSimple(
         "$sshUser@$displaySshHost"
     } else {
         displayHost
+    }
+
+    val billingStatus = remember(server) {
+        BillingManager.calculateStatus(server)
     }
 
     Card(
@@ -365,6 +383,103 @@ fun ServerCardSimple(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+
+                    if (billingStatus.type != BillingType.NONE && billingStatus.badgeText.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(4.dp))
+                        val badgeBg = when {
+                            billingStatus.isExpired -> RedAccent.copy(alpha = 0.16f)
+                            billingStatus.isUrgent -> AmberAccent.copy(alpha = 0.20f)
+                            else -> CyanPrimary.copy(alpha = 0.14f)
+                        }
+                        val badgeColor = when {
+                            billingStatus.isExpired -> RedAccent
+                            billingStatus.isUrgent -> AmberAccent
+                            else -> CyanPrimary
+                        }
+                        val isApi = billingStatus.type == BillingType.TIMEWEB_CLOUD ||
+                                billingStatus.type == BillingType.SELECTEL ||
+                                billingStatus.type == BillingType.BEGET
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = badgeBg,
+                                border = BorderStroke(1.dp, badgeColor.copy(alpha = 0.35f)),
+                                modifier = Modifier.clickable(enabled = isApi && onRefreshBilling != null) {
+                                    onRefreshBilling?.invoke()
+                                }
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = if (isApi) Icons.Default.AccountBalanceWallet else Icons.Default.CalendarToday,
+                                        contentDescription = null,
+                                        tint = badgeColor,
+                                        modifier = Modifier.size(11.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = billingStatus.badgeText,
+                                        color = badgeColor,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        fontSize = 10.5.sp
+                                    )
+                                    if (isApi) {
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                        Icon(
+                                            imageVector = Icons.Default.Sync,
+                                            contentDescription = strings.billingRefreshTooltip,
+                                            tint = badgeColor.copy(alpha = 0.75f),
+                                            modifier = Modifier.size(11.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Кнопка «Продлить» для серверов с фиксированной датой/интервалом
+                            if (!isApi && onExtendBilling != null) {
+                                val extendLabel = if (billingStatus.type == BillingType.MONTHLY_DAY) {
+                                    "+1 мес"
+                                } else {
+                                    "+${if (server.billingIntervalDays > 0) server.billingIntervalDays else 30} дн."
+                                }
+                                Surface(
+                                    shape = RoundedCornerShape(6.dp),
+                                    color = MintSecondary.copy(alpha = 0.16f),
+                                    border = BorderStroke(1.dp, MintSecondary.copy(alpha = 0.5f)),
+                                    modifier = Modifier
+                                        .clickable { onExtendBilling.invoke() }
+                                        .testTag("extend_server_${server.id}")
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Add,
+                                            contentDescription = "Продлить",
+                                            tint = MintSecondary,
+                                            modifier = Modifier.size(10.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(2.dp))
+                                        Text(
+                                            text = extendLabel,
+                                            color = MintSecondary,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = FontWeight.Bold,
+                                            fontSize = 10.sp
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -456,6 +571,37 @@ fun ServerEditDialogClean(
             }
         }
     }
+
+    // Billing / Renewal State
+    var billingType by remember {
+        mutableStateOf(
+            try {
+                BillingType.valueOf(initialServer?.billingType ?: "NONE")
+            } catch (_: Exception) {
+                BillingType.NONE
+            }
+        )
+    }
+    var billingDayOfMonthText by remember {
+        mutableStateOf((initialServer?.billingDayOfMonth ?: 4).toString())
+    }
+    var billingIntervalDaysText by remember {
+        mutableStateOf((if (initialServer?.billingIntervalDays != null && initialServer.billingIntervalDays > 0) initialServer.billingIntervalDays else 30).toString())
+    }
+    var billingApiKey by remember {
+        mutableStateOf(initialServer?.billingApiKey ?: "")
+    }
+    var billingCostMonthlyText by remember {
+        mutableStateOf(initialServer?.let { if (it.billingCostMonthly > 0.0) it.billingCostMonthly.toString() else "" } ?: "")
+    }
+    var billingLastPaidDate by remember {
+        mutableStateOf(initialServer?.billingLastPaidDate ?: 0L)
+    }
+
+    // Live API Test State inside Dialog
+    val coroutineScope = rememberCoroutineScope()
+    var isCheckingApi by remember { mutableStateOf(false) }
+    var apiTestResult by remember { mutableStateOf<com.example.data.billing.BillingFetchResult?>(null) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -790,6 +936,703 @@ fun ServerEditDialogClean(
                         }
                     }
                 }
+
+                // Строка 6: Оплата и продление сервера (Billing & Renewal)
+                item {
+                    Card(
+                        shape = RoundedCornerShape(14.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f), RoundedCornerShape(14.dp))
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Default.CalendarToday,
+                                    contentDescription = null,
+                                    tint = CyanPrimary,
+                                    modifier = Modifier.size(18.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = strings.billingSectionHeader,
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.Bold,
+                                        color = CyanPrimary
+                                    )
+                                    Text(
+                                        text = strings.billingSectionSub,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+
+                            // Выбор типа: [Откл] [Число мес.] [Интервал] [Timeweb] [Selectel]
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                listOf(
+                                    BillingType.NONE to strings.billingTypeNone,
+                                    BillingType.MONTHLY_DAY to strings.billingTypeMonthlyDay,
+                                    BillingType.INTERVAL_DAYS to strings.billingTypeInterval,
+                                    BillingType.TIMEWEB_CLOUD to "Timeweb",
+                                    BillingType.SELECTEL to "Selectel",
+                                    BillingType.BEGET to "Beget"
+                                ).forEach { (type, label) ->
+                                    val isSelected = billingType == type
+                                    Surface(
+                                        onClick = {
+                                            billingType = type
+                                            apiTestResult = null
+                                        },
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = if (isSelected) CyanPrimary.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surface.copy(alpha = 0.6f),
+                                        border = if (isSelected) BorderStroke(1.dp, CyanPrimary) else BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f)),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(
+                                            text = label,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                            color = if (isSelected) CyanPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            fontSize = 10.sp,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                            modifier = Modifier.padding(vertical = 6.dp, horizontal = 2.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            when (billingType) {
+                                BillingType.NONE -> {
+                                    Text(
+                                        text = "Отслеживание оплаты отключено для этого сервера.",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontSize = 11.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                                    )
+                                }
+
+                                BillingType.MONTHLY_DAY -> {
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        OutlinedTextField(
+                                            value = billingDayOfMonthText,
+                                            onValueChange = { billingDayOfMonthText = it.filter { ch -> ch.isDigit() }.take(2) },
+                                            label = { Text(strings.billingDayLabel) },
+                                            placeholder = { Text("4") },
+                                            singleLine = true,
+                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                            shape = RoundedCornerShape(12.dp),
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+
+                                        // Quick Day Presets
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Быстрый выбор:",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontSize = 10.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            listOf(1, 4, 10, 15, 20, 25, 30).forEach { day ->
+                                                val isSelected = billingDayOfMonthText == day.toString()
+                                                Surface(
+                                                    onClick = { billingDayOfMonthText = day.toString() },
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    color = if (isSelected) CyanPrimary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface,
+                                                    border = if (isSelected) BorderStroke(1.dp, CyanPrimary) else null
+                                                ) {
+                                                    Text(
+                                                        text = day.toString(),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                        color = if (isSelected) CyanPrimary else MaterialTheme.colorScheme.onSurface,
+                                                        fontSize = 11.sp,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        Text(
+                                            text = strings.billingDayHint,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+
+                                        val dayVal = billingDayOfMonthText.toIntOrNull()?.coerceIn(1, 31) ?: 4
+                                        val tempServer = remember(dayVal, billingLastPaidDate) {
+                                            (initialServer ?: ServerEntity(name = "Preview", host = "127.0.0.1")).copy(
+                                                billingType = BillingType.MONTHLY_DAY.name,
+                                                billingDayOfMonth = dayVal,
+                                                billingLastPaidDate = billingLastPaidDate
+                                            )
+                                        }
+                                        val nextDue = remember(tempServer) { BillingManager.getNextDueDate(tempServer) }
+                                        val nextDueStr = remember(nextDue) { BillingManager.fullDateFormat.format(nextDue.time) }
+                                        val tempStatus = remember(tempServer) { BillingManager.calculateStatus(tempServer) }
+
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = CyanPrimary.copy(alpha = 0.12f),
+                                            border = BorderStroke(1.dp, CyanPrimary.copy(alpha = 0.35f)),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Column(modifier = Modifier.weight(1f)) {
+                                                        Text(
+                                                            text = "Следующая оплата: $nextDueStr",
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = CyanPrimary
+                                                        )
+                                                        Text(
+                                                            text = "Осталось: ${tempStatus.daysLeft ?: 0} дн.",
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
+                                                    Button(
+                                                        onClick = {
+                                                            val nextMs = BillingManager.addPeriod(tempServer, billingLastPaidDate)
+                                                            billingLastPaidDate = nextMs
+                                                            Toast.makeText(context, "Оплата продлена на 1 месяц!", Toast.LENGTH_SHORT).show()
+                                                        },
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                                        colors = ButtonDefaults.buttonColors(containerColor = MintSecondary, contentColor = Color.Black)
+                                                    ) {
+                                                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+                                                        Spacer(modifier = Modifier.width(3.dp))
+                                                        Text("+1 мес", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                    }
+                                                }
+                                                if (billingLastPaidDate > 0L) {
+                                                    TextButton(
+                                                        onClick = {
+                                                            billingLastPaidDate = 0L
+                                                            Toast.makeText(context, "Сброшено к авто-расчету", Toast.LENGTH_SHORT).show()
+                                                        },
+                                                        contentPadding = PaddingValues(0.dp),
+                                                        modifier = Modifier.height(26.dp)
+                                                    ) {
+                                                        Text("Сбросить к текущей дате", fontSize = 10.5.sp, color = MaterialTheme.colorScheme.error)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                BillingType.INTERVAL_DAYS -> {
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        OutlinedTextField(
+                                            value = billingIntervalDaysText,
+                                            onValueChange = { billingIntervalDaysText = it.filter { ch -> ch.isDigit() }.take(3) },
+                                            label = { Text(strings.billingIntervalLabel) },
+                                            placeholder = { Text("30") },
+                                            singleLine = true,
+                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                            shape = RoundedCornerShape(12.dp),
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+
+                                        // Quick Presets 30, 31, 60, 90, 365
+                                        Row(
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            listOf(30, 31, 60, 90, 365).forEach { days ->
+                                                val isSelected = billingIntervalDaysText == days.toString()
+                                                Surface(
+                                                    onClick = { billingIntervalDaysText = days.toString() },
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    color = if (isSelected) CyanPrimary.copy(alpha = 0.2f) else MaterialTheme.colorScheme.surface,
+                                                    border = if (isSelected) BorderStroke(1.dp, CyanPrimary) else null
+                                                ) {
+                                                    Text(
+                                                        text = "$days дн.",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                                        color = if (isSelected) CyanPrimary else MaterialTheme.colorScheme.onSurface,
+                                                        fontSize = 11.sp,
+                                                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+
+                                        Text(
+                                            text = strings.billingIntervalHint,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+
+                                        val intervalVal = billingIntervalDaysText.toIntOrNull()?.coerceAtLeast(1) ?: 30
+                                        val tempIntervalServer = remember(intervalVal, billingLastPaidDate) {
+                                            (initialServer ?: ServerEntity(name = "Preview", host = "127.0.0.1")).copy(
+                                                billingType = BillingType.INTERVAL_DAYS.name,
+                                                billingIntervalDays = intervalVal,
+                                                billingLastPaidDate = billingLastPaidDate
+                                            )
+                                        }
+                                        val nextDueInterval = remember(tempIntervalServer) { BillingManager.getNextDueDate(tempIntervalServer) }
+                                        val nextDueIntervalStr = remember(nextDueInterval) { BillingManager.fullDateFormat.format(nextDueInterval.time) }
+                                        val tempIntervalStatus = remember(tempIntervalServer) { BillingManager.calculateStatus(tempIntervalServer) }
+
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = CyanPrimary.copy(alpha = 0.12f),
+                                            border = BorderStroke(1.dp, CyanPrimary.copy(alpha = 0.35f)),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Column(modifier = Modifier.padding(10.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Column(modifier = Modifier.weight(1f)) {
+                                                        Text(
+                                                            text = "Следующая оплата: $nextDueIntervalStr",
+                                                            style = MaterialTheme.typography.bodySmall,
+                                                            fontWeight = FontWeight.Bold,
+                                                            color = CyanPrimary
+                                                        )
+                                                        Text(
+                                                            text = "Осталось: ${tempIntervalStatus.daysLeft ?: 0} дн.",
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                        )
+                                                    }
+                                                    Button(
+                                                        onClick = {
+                                                            val nextMs = BillingManager.addPeriod(tempIntervalServer, billingLastPaidDate)
+                                                            billingLastPaidDate = nextMs
+                                                            Toast.makeText(context, "Оплата продлена на $intervalVal дн.!", Toast.LENGTH_SHORT).show()
+                                                        },
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                                        colors = ButtonDefaults.buttonColors(containerColor = MintSecondary, contentColor = Color.Black)
+                                                    ) {
+                                                        Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(13.dp))
+                                                        Spacer(modifier = Modifier.width(3.dp))
+                                                        Text("+$intervalVal дн.", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                                                    }
+                                                }
+                                                if (billingLastPaidDate > 0L) {
+                                                    TextButton(
+                                                        onClick = {
+                                                            billingLastPaidDate = 0L
+                                                            Toast.makeText(context, "Сброшено к авто-расчету", Toast.LENGTH_SHORT).show()
+                                                        },
+                                                        contentPadding = PaddingValues(0.dp),
+                                                        modifier = Modifier.height(26.dp)
+                                                    ) {
+                                                        Text("Сбросить к текущей дате", fontSize = 10.5.sp, color = MaterialTheme.colorScheme.error)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                BillingType.TIMEWEB_CLOUD -> {
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            OutlinedTextField(
+                                                value = billingApiKey,
+                                                onValueChange = {
+                                                    billingApiKey = it
+                                                    apiTestResult = null
+                                                },
+                                                label = { Text(strings.billingTimewebTokenLabel) },
+                                                placeholder = { Text("eyJhbGciOiJSUzUxMiIs...") },
+                                                singleLine = true,
+                                                shape = RoundedCornerShape(12.dp),
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            IconButton(
+                                                onClick = {
+                                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                                    val clip = clipboard.primaryClip?.getItemAt(0)?.text?.toString()
+                                                    if (!clip.isNullOrBlank()) {
+                                                        billingApiKey = clip.trim()
+                                                        apiTestResult = null
+                                                        Toast.makeText(context, "Токен Timeweb вставлен", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
+                                            ) {
+                                                Icon(Icons.Default.ContentPaste, contentDescription = strings.actionPaste, tint = CyanPrimary)
+                                            }
+                                        }
+
+                                        // Test API Button & Result
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            OutlinedButton(
+                                                onClick = {
+                                                    if (billingApiKey.isBlank()) {
+                                                        Toast.makeText(context, "Введите токен Timeweb", Toast.LENGTH_SHORT).show()
+                                                        return@OutlinedButton
+                                                    }
+                                                    isCheckingApi = true
+                                                    apiTestResult = null
+                                                    coroutineScope.launch {
+                                                        val res = BillingManager.testBillingApi(
+                                                            BillingType.TIMEWEB_CLOUD,
+                                                            billingApiKey
+                                                        )
+                                                        isCheckingApi = false
+                                                        apiTestResult = res
+                                                    }
+                                                },
+                                                enabled = !isCheckingApi && billingApiKey.isNotBlank(),
+                                                shape = RoundedCornerShape(8.dp),
+                                                modifier = Modifier.height(36.dp)
+                                            ) {
+                                                if (isCheckingApi) {
+                                                    androidx.compose.material3.CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(14.dp), color = CyanPrimary)
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Text(strings.billingCheckingApi, fontSize = 11.sp)
+                                                } else {
+                                                    Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Text(strings.billingCheckApiBtn, fontSize = 11.sp)
+                                                }
+                                            }
+                                        }
+
+                                        apiTestResult?.let { result ->
+                                            if (result.success) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    color = MintSecondary.copy(alpha = 0.15f),
+                                                    border = BorderStroke(1.dp, MintSecondary.copy(alpha = 0.4f)),
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Column(modifier = Modifier.padding(8.dp)) {
+                                                        Text(
+                                                            text = "✓ API подключен успешно!",
+                                                            color = MintSecondary,
+                                                            fontWeight = FontWeight.Bold,
+                                                            style = MaterialTheme.typography.bodySmall
+                                                        )
+                                                        Text(
+                                                            text = "Баланс: ${result.balance} ${result.currency}" +
+                                                                    (result.hoursLeft?.let { " | Осталось: $it ч (~${result.daysLeft} дн.)" } ?: ""),
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = MaterialTheme.colorScheme.onSurface
+                                                        )
+                                                    }
+                                                }
+                                            } else {
+                                                Surface(
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    color = RedAccent.copy(alpha = 0.15f),
+                                                    border = BorderStroke(1.dp, RedAccent.copy(alpha = 0.4f)),
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Text(
+                                                        text = "Ошибка: ${result.errorMessage ?: "Не удалось подключиться"}",
+                                                        color = RedAccent,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        modifier = Modifier.padding(8.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                BillingType.SELECTEL -> {
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            OutlinedTextField(
+                                                value = billingApiKey,
+                                                onValueChange = {
+                                                    billingApiKey = it
+                                                    apiTestResult = null
+                                                },
+                                                label = { Text(strings.billingSelectelKeyLabel) },
+                                                placeholder = { Text("DAusR7c5gZSowRsPMh2JFe7Zn_...") },
+                                                singleLine = true,
+                                                shape = RoundedCornerShape(12.dp),
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            IconButton(
+                                                onClick = {
+                                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                                    val clip = clipboard.primaryClip?.getItemAt(0)?.text?.toString()
+                                                    if (!clip.isNullOrBlank()) {
+                                                        billingApiKey = clip.trim()
+                                                        apiTestResult = null
+                                                        Toast.makeText(context, "API-ключ Selectel вставлен", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
+                                            ) {
+                                                Icon(Icons.Default.ContentPaste, contentDescription = strings.actionPaste, tint = CyanPrimary)
+                                            }
+                                        }
+
+                                        OutlinedTextField(
+                                            value = billingCostMonthlyText,
+                                            onValueChange = {
+                                                billingCostMonthlyText = it.filter { ch -> ch.isDigit() || ch == '.' }
+                                                apiTestResult = null
+                                            },
+                                            label = { Text(strings.billingCostMonthlyLabel) },
+                                            placeholder = { Text("напр. 790") },
+                                            singleLine = true,
+                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                            shape = RoundedCornerShape(12.dp),
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+
+                                        Text(
+                                            text = strings.billingCostMonthlyHint,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+
+                                        // Test API Button & Result
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            OutlinedButton(
+                                                onClick = {
+                                                    if (billingApiKey.isBlank()) {
+                                                        Toast.makeText(context, "Введите API-ключ Selectel", Toast.LENGTH_SHORT).show()
+                                                        return@OutlinedButton
+                                                    }
+                                                    isCheckingApi = true
+                                                    apiTestResult = null
+                                                    coroutineScope.launch {
+                                                        val cost = billingCostMonthlyText.toDoubleOrNull() ?: 0.0
+                                                        val res = BillingManager.testBillingApi(
+                                                            BillingType.SELECTEL,
+                                                            billingApiKey,
+                                                            cost
+                                                        )
+                                                        isCheckingApi = false
+                                                        apiTestResult = res
+                                                    }
+                                                },
+                                                enabled = !isCheckingApi && billingApiKey.isNotBlank(),
+                                                shape = RoundedCornerShape(8.dp),
+                                                modifier = Modifier.height(36.dp)
+                                            ) {
+                                                if (isCheckingApi) {
+                                                    androidx.compose.material3.CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(14.dp), color = CyanPrimary)
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Text(strings.billingCheckingApi, fontSize = 11.sp)
+                                                } else {
+                                                    Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Text(strings.billingCheckApiBtn, fontSize = 11.sp)
+                                                }
+                                            }
+                                        }
+
+                                        apiTestResult?.let { result ->
+                                            if (result.success) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    color = MintSecondary.copy(alpha = 0.15f),
+                                                    border = BorderStroke(1.dp, MintSecondary.copy(alpha = 0.4f)),
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Column(modifier = Modifier.padding(8.dp)) {
+                                                        Text(
+                                                            text = "✓ API подключен успешно!",
+                                                            color = MintSecondary,
+                                                            fontWeight = FontWeight.Bold,
+                                                            style = MaterialTheme.typography.bodySmall
+                                                        )
+                                                        Text(
+                                                            text = "Баланс: ${result.balance} ₽" +
+                                                                    (result.daysLeft?.let { " | Хватит примерно на $it дн." } ?: ""),
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = MaterialTheme.colorScheme.onSurface
+                                                        )
+                                                    }
+                                                }
+                                            } else {
+                                                Surface(
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    color = RedAccent.copy(alpha = 0.15f),
+                                                    border = BorderStroke(1.dp, RedAccent.copy(alpha = 0.4f)),
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Text(
+                                                        text = "Ошибка: ${result.errorMessage ?: "Не удалось подключиться"}",
+                                                        color = RedAccent,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        modifier = Modifier.padding(8.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                BillingType.BEGET -> {
+                                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically) {
+                                            OutlinedTextField(
+                                                value = billingApiKey,
+                                                onValueChange = {
+                                                    billingApiKey = it
+                                                    apiTestResult = null
+                                                },
+                                                label = { Text(strings.billingBegetKeyLabel) },
+                                                placeholder = { Text("login:password или token...") },
+                                                singleLine = true,
+                                                shape = RoundedCornerShape(12.dp),
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            IconButton(
+                                                onClick = {
+                                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                                    val clip = clipboard.primaryClip?.getItemAt(0)?.text?.toString()
+                                                    if (!clip.isNullOrBlank()) {
+                                                        billingApiKey = clip.trim()
+                                                        apiTestResult = null
+                                                        Toast.makeText(context, "Ключ Beget вставлен", Toast.LENGTH_SHORT).show()
+                                                    }
+                                                }
+                                            ) {
+                                                Icon(Icons.Default.ContentPaste, contentDescription = strings.actionPaste, tint = CyanPrimary)
+                                            }
+                                        }
+
+                                        OutlinedTextField(
+                                            value = billingCostMonthlyText,
+                                            onValueChange = { billingCostMonthlyText = it.filter { ch -> ch.isDigit() || ch == '.' } },
+                                            label = { Text(strings.billingCostMonthlyLabel) },
+                                            placeholder = { Text("600") },
+                                            singleLine = true,
+                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                            shape = RoundedCornerShape(12.dp),
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+
+                                        Text(
+                                            text = "Укажите логин и пароль от API в формате login:password или API-токен Beget, и стоимость в месяц для расчета дней.",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontSize = 11.sp,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+
+                                        // Test API Button
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        ) {
+                                            OutlinedButton(
+                                                onClick = {
+                                                    if (billingApiKey.isBlank()) {
+                                                        Toast.makeText(context, "Введите данные Beget", Toast.LENGTH_SHORT).show()
+                                                        return@OutlinedButton
+                                                    }
+                                                    isCheckingApi = true
+                                                    apiTestResult = null
+                                                    coroutineScope.launch {
+                                                        val cost = billingCostMonthlyText.toDoubleOrNull() ?: 0.0
+                                                        val res = BillingManager.testBillingApi(
+                                                            BillingType.BEGET,
+                                                            billingApiKey,
+                                                            cost
+                                                        )
+                                                        isCheckingApi = false
+                                                        apiTestResult = res
+                                                    }
+                                                },
+                                                enabled = !isCheckingApi && billingApiKey.isNotBlank(),
+                                                shape = RoundedCornerShape(8.dp),
+                                                modifier = Modifier.height(36.dp)
+                                            ) {
+                                                if (isCheckingApi) {
+                                                    androidx.compose.material3.CircularProgressIndicator(strokeWidth = 2.dp, modifier = Modifier.size(14.dp), color = CyanPrimary)
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Text(strings.billingCheckingApi, fontSize = 11.sp)
+                                                } else {
+                                                    Icon(Icons.Default.Sync, contentDescription = null, modifier = Modifier.size(14.dp))
+                                                    Spacer(modifier = Modifier.width(6.dp))
+                                                    Text(strings.billingCheckApiBtn, fontSize = 11.sp)
+                                                }
+                                            }
+                                        }
+
+                                        apiTestResult?.let { result ->
+                                            if (result.success) {
+                                                Surface(
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    color = MintSecondary.copy(alpha = 0.15f),
+                                                    border = BorderStroke(1.dp, MintSecondary.copy(alpha = 0.4f)),
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Column(modifier = Modifier.padding(8.dp)) {
+                                                        Text(
+                                                            text = "✓ API Beget подключен успешно!",
+                                                            color = MintSecondary,
+                                                            fontWeight = FontWeight.Bold,
+                                                            style = MaterialTheme.typography.bodySmall
+                                                        )
+                                                        Text(
+                                                            text = "Баланс: ${result.balance} ₽" +
+                                                                    (result.daysLeft?.let { " | Хватит примерно на $it дн." } ?: ""),
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = MaterialTheme.colorScheme.onSurface
+                                                        )
+                                                    }
+                                                }
+                                            } else {
+                                                Surface(
+                                                    shape = RoundedCornerShape(8.dp),
+                                                    color = RedAccent.copy(alpha = 0.15f),
+                                                    border = BorderStroke(1.dp, RedAccent.copy(alpha = 0.4f)),
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Text(
+                                                        text = "Ошибка: ${result.errorMessage ?: "Не удалось подключиться"}",
+                                                        color = RedAccent,
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        modifier = Modifier.padding(8.dp)
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
         },
         confirmButton = {
@@ -805,6 +1648,11 @@ fun ServerEditDialogClean(
                     } else {
                         "3x-ui (${parsed.host})"
                     }
+
+                    val finalBillingType = billingType.name
+                    val finalDay = billingDayOfMonthText.toIntOrNull()?.coerceIn(1, 31) ?: 1
+                    val finalInterval = billingIntervalDaysText.toIntOrNull()?.coerceAtLeast(1) ?: 30
+                    val finalCost = billingCostMonthlyText.toDoubleOrNull() ?: 0.0
 
                     val server = (initialServer ?: ServerEntity(name = finalName, host = parsed.host)).copy(
                         name = finalName,
@@ -826,7 +1674,18 @@ fun ServerEditDialogClean(
                         remoteTargetHost = "127.0.0.1",
                         remoteTargetPort = parsed.port,
                         localPort = parsed.port,
-                        bindToLan = true
+                        bindToLan = true,
+                        billingType = finalBillingType,
+                        billingDayOfMonth = finalDay,
+                        billingIntervalDays = finalInterval,
+                        billingLastPaidDate = billingLastPaidDate,
+                        billingApiKey = billingApiKey.trim(),
+                        billingCostMonthly = finalCost,
+                        cachedBalance = apiTestResult?.balance ?: initialServer?.cachedBalance,
+                        cachedCurrency = apiTestResult?.currency ?: initialServer?.cachedCurrency ?: "RUB",
+                        cachedHoursLeft = apiTestResult?.hoursLeft ?: initialServer?.cachedHoursLeft,
+                        cachedDaysLeft = apiTestResult?.daysLeft ?: initialServer?.cachedDaysLeft,
+                        billingLastCheckedAt = if (apiTestResult?.success == true) System.currentTimeMillis() else (initialServer?.billingLastCheckedAt ?: 0L)
                     )
                     onSave(server)
                 },

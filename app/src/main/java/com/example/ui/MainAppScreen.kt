@@ -57,6 +57,9 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SettingsBrightness
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.NotificationsActive
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Tune
@@ -73,6 +76,8 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
@@ -83,6 +88,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.TabRowDefaults
@@ -373,6 +379,12 @@ fun MainAppScreen(
                             },
                             onDeleteServer = { server ->
                                 viewModel.deleteServer(server)
+                            },
+                            onRefreshBilling = { server ->
+                                viewModel.refreshServerBilling(server, notifyUser = true)
+                            },
+                            onExtendBilling = { server ->
+                                viewModel.extendServerBilling(server)
                             }
                         )
                     }
@@ -450,6 +462,9 @@ fun MainAppScreen(
     }
 
     if (showSettingsDialog) {
+        val billingNotificationsEnabled by viewModel.billingNotificationsEnabled.collectAsStateWithLifecycle()
+        val billingNotificationDays by viewModel.billingNotificationDays.collectAsStateWithLifecycle()
+
         SettingsDialog(
             viewModel = viewModel,
             currentPolicy = closePolicy,
@@ -457,6 +472,10 @@ fun MainAppScreen(
             currentLanguage = appLanguage,
             strings = strings,
             tunnelState = tunnelState,
+            billingNotificationsEnabled = billingNotificationsEnabled,
+            billingNotificationDays = billingNotificationDays,
+            onToggleBillingNotifications = { enabled -> viewModel.setBillingNotificationsEnabled(enabled, context) },
+            onToggleBillingNotificationDay = { day -> viewModel.toggleBillingNotificationDay(day, context) },
             onSelectPolicy = { policy -> viewModel.setClosePolicy(policy) },
             onSelectTheme = { mode -> viewModel.setThemeMode(mode) },
             onSelectLanguage = { lang -> viewModel.setAppLanguage(lang) },
@@ -920,6 +939,10 @@ fun SettingsDialog(
     currentLanguage: AppLanguage = AppLanguage.SYSTEM,
     strings: Strings = RussianStrings,
     tunnelState: com.example.service.ActiveTunnelState,
+    billingNotificationsEnabled: Boolean = true,
+    billingNotificationDays: Set<Int> = setOf(7, 3, 1),
+    onToggleBillingNotifications: (Boolean) -> Unit = {},
+    onToggleBillingNotificationDay: (Int) -> Unit = {},
     onSelectPolicy: (TunnelClosePolicy) -> Unit,
     onSelectTheme: (AppThemeMode) -> Unit,
     onSelectLanguage: (AppLanguage) -> Unit,
@@ -930,6 +953,16 @@ fun SettingsDialog(
     val context = LocalContext.current
     var selectedTab by remember { mutableIntStateOf(0) } // 0 = Общие, 1 = Бэкап
     var policyExpanded by remember { mutableStateOf(false) }
+
+    val notifPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            onToggleBillingNotifications(true)
+        } else {
+            Toast.makeText(context, strings.billingNotifPermissionDenied, Toast.LENGTH_SHORT).show()
+        }
+    }
 
     val isCheckingUpdate by viewModel.isCheckingUpdate.collectAsStateWithLifecycle()
     var showChangelogDialog by remember { mutableStateOf(false) }
@@ -1241,6 +1274,101 @@ fun SettingsDialog(
                                                     )
                                                 }
                                             }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        // 4. Уведомления об оплате серверов (Billing Reminders 7, 3, 1 days)
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                        Icon(
+                                            imageVector = if (billingNotificationsEnabled) Icons.Default.NotificationsActive else Icons.Default.NotificationsOff,
+                                            contentDescription = null,
+                                            tint = if (billingNotificationsEnabled) CyanPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Column {
+                                            Text(
+                                                text = strings.billingNotifToggleLabel,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = strings.billingNotifToggleSub,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    Switch(
+                                        checked = billingNotificationsEnabled,
+                                        onCheckedChange = { checked ->
+                                            if (checked && android.os.Build.VERSION.SDK_INT >= 33) {
+                                                if (androidx.core.content.ContextCompat.checkSelfPermission(
+                                                        context,
+                                                        android.Manifest.permission.POST_NOTIFICATIONS
+                                                    ) != android.content.pm.PackageManager.PERMISSION_GRANTED
+                                                ) {
+                                                    notifPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                                } else {
+                                                    onToggleBillingNotifications(true)
+                                                }
+                                            } else {
+                                                onToggleBillingNotifications(checked)
+                                            }
+                                        }
+                                    )
+                                }
+
+                                if (billingNotificationsEnabled) {
+                                    Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                                    Text(
+                                        text = strings.billingNotifDaysLabel,
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        listOf(
+                                            7 to strings.billingNotifDay7,
+                                            3 to strings.billingNotifDay3,
+                                            1 to strings.billingNotifDay1
+                                        ).forEach { (day, label) ->
+                                            val isSelected = billingNotificationDays.contains(day)
+                                            FilterChip(
+                                                selected = isSelected,
+                                                onClick = { onToggleBillingNotificationDay(day) },
+                                                label = { Text(label, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+                                                leadingIcon = if (isSelected) {
+                                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(12.dp)) }
+                                                } else null,
+                                                colors = FilterChipDefaults.filterChipColors(
+                                                    selectedContainerColor = CyanPrimary.copy(alpha = 0.22f),
+                                                    selectedLabelColor = CyanPrimary,
+                                                    selectedLeadingIconColor = CyanPrimary
+                                                ),
+                                                border = FilterChipDefaults.filterChipBorder(
+                                                    borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                                    selectedBorderColor = CyanPrimary,
+                                                    enabled = true,
+                                                    selected = isSelected
+                                                )
+                                            )
                                         }
                                     }
                                 }

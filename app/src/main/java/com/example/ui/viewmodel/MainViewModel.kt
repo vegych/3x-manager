@@ -113,6 +113,50 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         prefs.edit().putString("tunnel_close_policy", policy.name).apply()
     }
 
+    // Billing Notification Settings
+    private val _billingNotificationsEnabled = MutableStateFlow(
+        prefs.getBoolean("billing_notifications_enabled", true)
+    )
+    val billingNotificationsEnabled: StateFlow<Boolean> = _billingNotificationsEnabled.asStateFlow()
+
+    private val defaultThresholds = setOf(7, 3, 1)
+    private val _billingNotificationDays = MutableStateFlow(
+        prefs.getStringSet("billing_notification_days", defaultThresholds.map { it.toString() }.toSet())
+            ?.mapNotNull { it.toIntOrNull() }?.toSet() ?: defaultThresholds
+    )
+    val billingNotificationDays: StateFlow<Set<Int>> = _billingNotificationDays.asStateFlow()
+
+    fun setBillingNotificationsEnabled(enabled: Boolean, context: Context? = null) {
+        _billingNotificationsEnabled.value = enabled
+        prefs.edit().putBoolean("billing_notifications_enabled", enabled).apply()
+        if (enabled && context != null) {
+            checkAndTriggerBillingNotifications(context)
+        }
+    }
+
+    fun toggleBillingNotificationDay(day: Int, context: Context? = null) {
+        val current = _billingNotificationDays.value.toMutableSet()
+        if (current.contains(day)) {
+            current.remove(day)
+        } else {
+            current.add(day)
+        }
+        _billingNotificationDays.value = current
+        prefs.edit().putStringSet("billing_notification_days", current.map { it.toString() }.toSet()).apply()
+        if (_billingNotificationsEnabled.value && context != null) {
+            checkAndTriggerBillingNotifications(context)
+        }
+    }
+
+    fun checkAndTriggerBillingNotifications(context: Context) {
+        com.example.util.BillingNotificationManager.checkAndNotify(
+            context = context,
+            servers = servers.value,
+            enabled = _billingNotificationsEnabled.value,
+            thresholdDays = _billingNotificationDays.value
+        )
+    }
+
     fun onLeavePanel(context: Context) {
         if (_closePolicy.value == TunnelClosePolicy.ON_PANEL_EXIT) {
             stopTunnel(context)
@@ -275,6 +319,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             kotlinx.coroutines.delay(2000)
             checkForAppUpdates(silent = true)
             _selectedServer.value?.let { checkPanelUpdates(it) }
+            refreshAllBillings()
         }
 
         viewModelScope.launch {
@@ -492,10 +537,75 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun saveServer(server: ServerEntity) {
         viewModelScope.launch {
             val id = repository.saveServer(server)
+            val updated = server.copy(id = id)
             if (_selectedServer.value?.id == id || _selectedServer.value == null) {
-                _selectedServer.value = server.copy(id = id)
-                refreshPanelData(server.copy(id = id))
+                _selectedServer.value = updated
+                refreshPanelData(updated)
             }
+            if (updated.billingType == "TIMEWEB_CLOUD" || updated.billingType == "SELECTEL" || updated.billingType == "BEGET") {
+                refreshServerBilling(updated)
+            }
+        }
+    }
+
+    fun refreshServerBilling(server: ServerEntity, notifyUser: Boolean = false) {
+        if (server.billingType != "TIMEWEB_CLOUD" && server.billingType != "SELECTEL" && server.billingType != "BEGET") return
+        viewModelScope.launch {
+            val result = com.example.data.billing.BillingManager.fetchBillingData(server)
+            if (result.success) {
+                val updated = server.copy(
+                    cachedBalance = result.balance,
+                    cachedCurrency = result.currency,
+                    cachedHoursLeft = result.hoursLeft,
+                    cachedDaysLeft = result.daysLeft,
+                    billingLastCheckedAt = System.currentTimeMillis()
+                )
+                repository.saveServer(updated)
+                if (_selectedServer.value?.id == server.id) {
+                    _selectedServer.value = updated
+                }
+                if (notifyUser) {
+                    val daysStr = result.daysLeft?.let { " ($it дн.)" } ?: ""
+                    _userMessage.emit("${server.name}: баланс ${result.balance} ${result.currency}$daysStr")
+                }
+            } else if (notifyUser && result.errorMessage != null) {
+                _userMessage.emit("Ошибка обновления биллинга: ${result.errorMessage}")
+            }
+        }
+    }
+
+    fun refreshAllBillings() {
+        viewModelScope.launch {
+            val currentServers = servers.value
+            currentServers.forEach { server ->
+                if (server.billingType == "TIMEWEB_CLOUD" || server.billingType == "SELECTEL" || server.billingType == "BEGET") {
+                    val result = com.example.data.billing.BillingManager.fetchBillingData(server)
+                    if (result.success) {
+                        val updated = server.copy(
+                            cachedBalance = result.balance,
+                            cachedCurrency = result.currency,
+                            cachedHoursLeft = result.hoursLeft,
+                            cachedDaysLeft = result.daysLeft,
+                            billingLastCheckedAt = System.currentTimeMillis()
+                        )
+                        repository.saveServer(updated)
+                    }
+                }
+            }
+            checkAndTriggerBillingNotifications(getApplication())
+        }
+    }
+
+    fun extendServerBilling(server: ServerEntity) {
+        viewModelScope.launch {
+            val newDueDateMs = com.example.data.billing.BillingManager.addPeriod(server)
+            val updated = server.copy(billingLastPaidDate = newDueDateMs)
+            repository.saveServer(updated)
+            if (_selectedServer.value?.id == server.id) {
+                _selectedServer.value = updated
+            }
+            val dateStr = com.example.data.billing.BillingManager.dateFormat.format(newDueDateMs)
+            _userMessage.emit("Оплата «${server.name}» продлена до $dateStr")
         }
     }
 

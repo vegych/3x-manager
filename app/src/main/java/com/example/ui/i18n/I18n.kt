@@ -54,6 +54,40 @@ interface Strings {
     val keyPassphraseField: String
     val sshPasswordField: String
 
+    val billingSectionHeader: String
+    val billingSectionSub: String
+    val billingTypeNone: String
+    val billingTypeMonthlyDay: String
+    val billingTypeInterval: String
+    val billingTypeTimeweb: String
+    val billingTypeSelectel: String
+    val billingTypeBeget: String
+    val billingDayLabel: String
+    val billingDayHint: String
+    val billingIntervalLabel: String
+    val billingIntervalHint: String
+    val billingTimewebTokenLabel: String
+    val billingSelectelKeyLabel: String
+    val billingBegetKeyLabel: String
+    val billingCostMonthlyLabel: String
+    val billingCostMonthlyHint: String
+    val billingCheckApiBtn: String
+    val billingCheckingApi: String
+    val billingRefreshTooltip: String
+    val btnExtendBilling: String
+    val msgBillingExtended: (String, String) -> String
+    val nextPaymentDateLabel: String
+    val btnResetToAuto: String
+
+    val billingNotifSectionHeader: String
+    val billingNotifToggleLabel: String
+    val billingNotifToggleSub: String
+    val billingNotifDaysLabel: String
+    val billingNotifDay7: String
+    val billingNotifDay3: String
+    val billingNotifDay1: String
+    val billingNotifPermissionDenied: String
+
     val btnSave: String
     val btnCancel: String
     val btnDelete: String
@@ -212,6 +246,40 @@ object RussianStrings : Strings {
     override val keyPassphraseField = "Passphrase ключа (если есть)"
     override val sshPasswordField = "SSH Пароль"
 
+    override val billingSectionHeader = "Оплата и продление сервера"
+    override val billingSectionSub = "Напоминание об оплате и проверка баланса по API"
+    override val billingTypeNone = "Отключено"
+    override val billingTypeMonthlyDay = "Число месяца"
+    override val billingTypeInterval = "Цикл (дней)"
+    override val billingTypeTimeweb = "Timeweb Cloud API"
+    override val billingTypeSelectel = "Selectel API"
+    override val billingTypeBeget = "Beget API"
+    override val billingDayLabel = "День месяца оплаты (1-31)"
+    override val billingDayHint = "Дата не сдвинется при 30 или 31 дне (напр. всегда 4-го числа)"
+    override val billingIntervalLabel = "Интервал оплаты (дней)"
+    override val billingIntervalHint = "Например: 30 или 31 день"
+    override val billingTimewebTokenLabel = "API-токен Timeweb Cloud"
+    override val billingSelectelKeyLabel = "API-ключ Selectel (X-token)"
+    override val billingBegetKeyLabel = "Логин:Пароль или API-токен Beget"
+    override val billingCostMonthlyLabel = "Стоимость в месяц (₽, опционально)"
+    override val billingCostMonthlyHint = "Для расчета оставшихся дней из баланса"
+    override val billingCheckApiBtn = "Проверить API"
+    override val billingCheckingApi = "Проверка..."
+    override val billingRefreshTooltip = "Обновить баланс"
+    override val btnExtendBilling = "+1 мес"
+    override val msgBillingExtended: (String, String) -> String = { name, date -> "Оплата «$name» продлена до $date" }
+    override val nextPaymentDateLabel = "Дата следующей оплаты:"
+    override val btnResetToAuto = "Авто-расчет"
+
+    override val billingNotifSectionHeader = "Уведомления об оплате серверов"
+    override val billingNotifToggleLabel = "Уведомления об оплате"
+    override val billingNotifToggleSub = "Напоминать в шторке Android при приближении срока оплаты"
+    override val billingNotifDaysLabel = "За сколько дней напоминать:"
+    override val billingNotifDay7 = "7 дней"
+    override val billingNotifDay3 = "3 дня"
+    override val billingNotifDay1 = "1 день"
+    override val billingNotifPermissionDenied = "Разрешение на отправку уведомлений не предоставлено"
+
     override val btnSave = "Сохранить"
     override val btnCancel = "Отмена"
     override val btnDelete = "Удалить"
@@ -363,6 +431,40 @@ object EnglishStrings : Strings {
     override val actionPickFile = "Pick file"
     override val keyPassphraseField = "Key Passphrase (if any)"
     override val sshPasswordField = "SSH Password"
+
+    override val billingSectionHeader = "Server Renewal & Billing"
+    override val billingSectionSub = "Payment reminders and balance tracking via API"
+    override val billingTypeNone = "Disabled"
+    override val billingTypeMonthlyDay = "Day of month"
+    override val billingTypeInterval = "Cycle (days)"
+    override val billingTypeTimeweb = "Timeweb Cloud API"
+    override val billingTypeSelectel = "Selectel API"
+    override val billingTypeBeget = "Beget API"
+    override val billingDayLabel = "Payment day of month (1-31)"
+    override val billingDayHint = "Date won't shift on 30 or 31 days (e.g. always on 4th)"
+    override val billingIntervalLabel = "Payment interval (days)"
+    override val billingIntervalHint = "E.g. 30 or 31 days"
+    override val billingTimewebTokenLabel = "Timeweb Cloud API token"
+    override val billingSelectelKeyLabel = "Selectel API key (X-token)"
+    override val billingBegetKeyLabel = "Beget login:password or API token"
+    override val billingCostMonthlyLabel = "Monthly cost (RUB, optional)"
+    override val billingCostMonthlyHint = "To calculate remaining days from balance"
+    override val billingCheckApiBtn = "Check API"
+    override val billingCheckingApi = "Checking..."
+    override val billingRefreshTooltip = "Refresh balance"
+    override val btnExtendBilling = "+1 mo"
+    override val msgBillingExtended: (String, String) -> String = { name, date -> "Payment for '$name' extended to $date" }
+    override val nextPaymentDateLabel = "Next payment date:"
+    override val btnResetToAuto = "Auto calculate"
+
+    override val billingNotifSectionHeader = "Server Payment Notifications"
+    override val billingNotifToggleLabel = "Payment Reminders"
+    override val billingNotifToggleSub = "Notify in Android status bar as due date approaches"
+    override val billingNotifDaysLabel = "Notify before due date:"
+    override val billingNotifDay7 = "7 days"
+    override val billingNotifDay3 = "3 days"
+    override val billingNotifDay1 = "1 day"
+    override val billingNotifPermissionDenied = "Notification permission was not granted"
 
     override val btnSave = "Save"
     override val btnCancel = "Cancel"
