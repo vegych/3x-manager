@@ -33,6 +33,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -173,6 +175,8 @@ fun MainAppScreen(
     val isCheckingUpdate by viewModel.isCheckingUpdate.collectAsStateWithLifecycle()
     val isDownloadingUpdate by viewModel.isDownloadingUpdate.collectAsStateWithLifecycle()
     val downloadProgress by viewModel.downloadProgress.collectAsStateWithLifecycle()
+    val apiAutoRefreshEnabled by viewModel.apiAutoRefreshEnabled.collectAsStateWithLifecycle()
+    val apiAutoRefreshIntervalHours by viewModel.apiAutoRefreshIntervalHours.collectAsStateWithLifecycle()
 
     LaunchedEffect(selectedServer, openedServers) {
         if (selectedServer == null || openedServers.isEmpty()) {
@@ -965,6 +969,8 @@ fun SettingsDialog(
     }
 
     val isCheckingUpdate by viewModel.isCheckingUpdate.collectAsStateWithLifecycle()
+    val apiAutoRefreshEnabled by viewModel.apiAutoRefreshEnabled.collectAsStateWithLifecycle()
+    val apiAutoRefreshIntervalHours by viewModel.apiAutoRefreshIntervalHours.collectAsStateWithLifecycle()
     var showChangelogDialog by remember { mutableStateOf(false) }
 
     // WebDAV states (cached in remember)
@@ -1353,22 +1359,140 @@ fun SettingsDialog(
                                             FilterChip(
                                                 selected = isSelected,
                                                 onClick = { onToggleBillingNotificationDay(day) },
-                                                label = { Text(label, fontSize = 11.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal) },
+                                                label = { Text(label, fontSize = 12.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium) },
                                                 leadingIcon = if (isSelected) {
-                                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(12.dp)) }
+                                                    { Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(13.dp)) }
                                                 } else null,
                                                 colors = FilterChipDefaults.filterChipColors(
-                                                    selectedContainerColor = CyanPrimary.copy(alpha = 0.22f),
-                                                    selectedLabelColor = CyanPrimary,
-                                                    selectedLeadingIconColor = CyanPrimary
+                                                    selectedContainerColor = CyanPrimary,
+                                                    selectedLabelColor = Color.White,
+                                                    selectedLeadingIconColor = Color.White
                                                 ),
                                                 border = FilterChipDefaults.filterChipBorder(
-                                                    borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f),
+                                                    borderColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.4f),
                                                     selectedBorderColor = CyanPrimary,
                                                     enabled = true,
                                                     selected = isSelected
                                                 )
                                             )
+                                        }
+                                    }
+                                }
+
+                                Divider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Sync,
+                                            contentDescription = null,
+                                            tint = CyanPrimary,
+                                            modifier = Modifier.size(20.dp)
+                                        )
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Column {
+                                            Text(
+                                                text = strings.apiAutoRefreshToggleLabel,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = strings.apiAutoRefreshToggleSub,
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                    Switch(
+                                        checked = apiAutoRefreshEnabled,
+                                        onCheckedChange = { viewModel.setApiAutoRefreshEnabled(it) }
+                                    )
+                                }
+
+                                if (apiAutoRefreshEnabled) {
+                                    var customHoursText by remember(apiAutoRefreshIntervalHours) {
+                                        mutableStateOf(apiAutoRefreshIntervalHours.toString())
+                                    }
+
+                                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                        Text(
+                                            text = strings.apiAutoRefreshIntervalLabel,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            OutlinedTextField(
+                                                value = customHoursText,
+                                                onValueChange = { input ->
+                                                    val clean = input.filter { ch -> ch.isDigit() }.take(4)
+                                                    customHoursText = clean
+                                                    val parsed = clean.toIntOrNull()
+                                                    if (parsed != null && parsed >= 2) {
+                                                        viewModel.setApiAutoRefreshIntervalHours(parsed)
+                                                    }
+                                                },
+                                                label = { Text("Интервал (в часах)") },
+                                                placeholder = { Text("2") },
+                                                singleLine = true,
+                                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                                shape = RoundedCornerShape(10.dp),
+                                                modifier = Modifier.weight(1f)
+                                            )
+
+                                            val currentVal = customHoursText.toIntOrNull() ?: 2
+                                            if (currentVal < 2) {
+                                                Text(
+                                                    text = "Мин. 2ч",
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = RedAccent,
+                                                    fontWeight = FontWeight.Bold
+                                                )
+                                            }
+                                        }
+
+                                        // Quick Presets
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Text(
+                                                text = "Быстрый выбор:",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                fontSize = 10.sp,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                            listOf(2, 3, 4, 6, 12, 24).forEach { hours ->
+                                                val isSelected = apiAutoRefreshIntervalHours == hours
+                                                Surface(
+                                                    onClick = {
+                                                        customHoursText = hours.toString()
+                                                        viewModel.setApiAutoRefreshIntervalHours(hours)
+                                                    },
+                                                    shape = RoundedCornerShape(6.dp),
+                                                    color = if (isSelected) CyanPrimary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                                    border = BorderStroke(1.dp, if (isSelected) CyanPrimary else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                                                ) {
+                                                    Text(
+                                                        text = "${hours}ч",
+                                                        fontSize = 12.sp,
+                                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurface,
+                                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                                                    )
+                                                }
+                                            }
                                         }
                                     }
                                 }

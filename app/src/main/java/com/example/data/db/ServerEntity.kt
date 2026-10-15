@@ -48,7 +48,9 @@ data class ServerEntity(
     val cachedCurrency: String = "RUB",
     val cachedHoursLeft: Int? = null,
     val cachedDaysLeft: Int? = null,
-    val billingLastCheckedAt: Long = 0L
+    val billingLastCheckedAt: Long = 0L,
+    val apiAutoRefreshEnabled: Boolean = true,
+    val apiAutoRefreshIntervalHours: Int = 2
 ) {
     fun getEffectiveUrl(tunnelLocalPort: Int? = null): String {
         val cleanPath = basePath.trim().trim('/')

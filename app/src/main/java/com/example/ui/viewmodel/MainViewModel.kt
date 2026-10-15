@@ -157,6 +157,46 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
+    private val _apiAutoRefreshEnabled = MutableStateFlow(prefs.getBoolean("api_auto_refresh_enabled", true))
+    val apiAutoRefreshEnabled: StateFlow<Boolean> = _apiAutoRefreshEnabled.asStateFlow()
+
+    private val _apiAutoRefreshIntervalHours = MutableStateFlow(prefs.getInt("api_auto_refresh_interval_hours", 2).coerceAtLeast(2))
+    val apiAutoRefreshIntervalHours: StateFlow<Int> = _apiAutoRefreshIntervalHours.asStateFlow()
+
+    fun setApiAutoRefreshEnabled(enabled: Boolean) {
+        _apiAutoRefreshEnabled.value = enabled
+        prefs.edit().putBoolean("api_auto_refresh_enabled", enabled).apply()
+        if (enabled) {
+            checkAndAutoRefreshApiBillings()
+        }
+    }
+
+    fun setApiAutoRefreshIntervalHours(hours: Int) {
+        val validHours = hours.coerceAtLeast(2)
+        _apiAutoRefreshIntervalHours.value = validHours
+        prefs.edit().putInt("api_auto_refresh_interval_hours", validHours).apply()
+        checkAndAutoRefreshApiBillings()
+    }
+
+    fun checkAndAutoRefreshApiBillings() {
+        val now = System.currentTimeMillis()
+
+        viewModelScope.launch {
+            servers.value.forEach { server ->
+                val isApi = server.billingType == "TIMEWEB_CLOUD" ||
+                        server.billingType == "SELECTEL" ||
+                        server.billingType == "BEGET"
+                if (isApi && server.billingApiKey.isNotBlank() && server.apiAutoRefreshEnabled && _apiAutoRefreshEnabled.value) {
+                    val serverIntervalHours = server.apiAutoRefreshIntervalHours.coerceAtLeast(2)
+                    val minIntervalMs = serverIntervalHours * 3600 * 1000L
+                    if (now - server.billingLastCheckedAt >= minIntervalMs) {
+                        refreshServerBilling(server, notifyUser = false)
+                    }
+                }
+            }
+        }
+    }
+
     fun onLeavePanel(context: Context) {
         if (_closePolicy.value == TunnelClosePolicy.ON_PANEL_EXIT) {
             stopTunnel(context)
@@ -267,6 +307,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             ServerSortMode.NEWEST -> list.sortedByDescending { it.createdAt }
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    init {
+        viewModelScope.launch {
+            servers.collect { currentServers ->
+                if (currentServers.isNotEmpty()) {
+                    checkAndAutoRefreshApiBillings()
+                }
+            }
+        }
+    }
 
     val tunnels: StateFlow<List<TunnelConfigEntity>> = repository.allTunnels
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

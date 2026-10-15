@@ -88,6 +88,10 @@ interface Strings {
     val billingNotifDay1: String
     val billingNotifPermissionDenied: String
 
+    val apiAutoRefreshToggleLabel: String
+    val apiAutoRefreshToggleSub: String
+    val apiAutoRefreshIntervalLabel: String
+
     val btnSave: String
     val btnCancel: String
     val btnDelete: String
@@ -280,6 +284,10 @@ object RussianStrings : Strings {
     override val billingNotifDay1 = "1 день"
     override val billingNotifPermissionDenied = "Разрешение на отправку уведомлений не предоставлено"
 
+    override val apiAutoRefreshToggleLabel = "Автообновление баланса API"
+    override val apiAutoRefreshToggleSub = "Периодически запрашивать баланс Timeweb, Selectel и Beget"
+    override val apiAutoRefreshIntervalLabel = "Интервал обновления (не менее 2 часов):"
+
     override val btnSave = "Сохранить"
     override val btnCancel = "Отмена"
     override val btnDelete = "Удалить"
@@ -465,6 +473,10 @@ object EnglishStrings : Strings {
     override val billingNotifDay3 = "3 days"
     override val billingNotifDay1 = "1 day"
     override val billingNotifPermissionDenied = "Notification permission was not granted"
+
+    override val apiAutoRefreshToggleLabel = "API Balance Auto-Refresh"
+    override val apiAutoRefreshToggleSub = "Periodically check Timeweb, Selectel, and Beget balances"
+    override val apiAutoRefreshIntervalLabel = "Check interval (min 2 hours):"
 
     override val btnSave = "Save"
     override val btnCancel = "Cancel"
