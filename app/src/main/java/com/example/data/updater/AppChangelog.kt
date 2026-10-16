@@ -24,6 +24,98 @@ data class ChangelogEntry(
 object AppChangelog {
     val history = listOf(
         ChangelogEntry(
+            version = "v1.1.21",
+            date = "Октябрь 2026",
+            releaseType = ReleaseType.IMPROVEMENT,
+            summary = "Поддержка API-ключа панели 3x-ui v3.3.0+ с приоритетом перед логином/паролем",
+            categories = listOf(
+                ChangelogCategory(
+                    title = "🔑 API-ключ панели 3x-ui",
+                    items = listOf(
+                        "Добавлено новое поле «API-ключ панели 3x-ui» при добавлении и редактировании серверов",
+                        "Приоритетная авторизация по заголовку x-api-key / Bearer token без необходимости передавать логин и пароль",
+                        "Сохранение и выгрузка API-ключа в бэкапах резервных копий"
+                    )
+                )
+            )
+        ),
+        ChangelogEntry(
+            version = "v1.1.20",
+            date = "Октябрь 2026",
+            releaseType = ReleaseType.IMPROVEMENT,
+            summary = "Убраны и скрыты уведомления в строке состояния для туннелей и скачивания обновлений",
+            categories = listOf(
+                ChangelogCategory(
+                    title = "🔕 Чистая строка состояния",
+                    items = listOf(
+                        "Загрузка обновлений через системный менеджер теперь происходит бесшумно без иконки и уведомления в шторке (VISIBILITY_HIDDEN)",
+                        "Служба фонового SSH-туннеля переведена в минимальный приоритет (IMPORTANCE_MIN) без показа значка в строке состояния"
+                    )
+                )
+            )
+        ),
+        ChangelogEntry(
+            version = "v1.1.19",
+            date = "Октябрь 2026",
+            releaseType = ReleaseType.IMPROVEMENT,
+            summary = "Переключатель уведомлений об оплате теперь выключен по умолчанию",
+            categories = listOf(
+                ChangelogCategory(
+                    title = "🔔 Уведомления об оплате",
+                    items = listOf(
+                        "Опция отправки уведомлений об оплате серверов теперь отключена по умолчанию",
+                        "Пользователь сам решает, когда активировать напоминания в настройках приложения"
+                    )
+                )
+            )
+        ),
+        ChangelogEntry(
+            version = "v1.1.18",
+            date = "Октябрь 2026",
+            releaseType = ReleaseType.IMPROVEMENT,
+            summary = "Настройка включения/выключения автозакрытия рекламы спонсоров в общих настройках",
+            categories = listOf(
+                ChangelogCategory(
+                    title = "⚙️ Настройки рекламы в панели",
+                    items = listOf(
+                        "Добавлен переключатель «Автозакрытие рекламы в панели» в раздел «Настройки» -> «Общие»",
+                        "Возможность в любой момент отключить автоподавление баннеров спонсоров или включить его обратно"
+                    )
+                )
+            )
+        ),
+        ChangelogEntry(
+            version = "v1.1.17",
+            date = "Октябрь 2026",
+            releaseType = ReleaseType.IMPROVEMENT,
+            summary = "Мгновенное (0 мс) скрытие и закрытие рекламы спонсоров в панели 3x-ui",
+            categories = listOf(
+                ChangelogCategory(
+                    title = "⚡ Мгновенное подавление рекламы",
+                    items = listOf(
+                        "Раннее внедрение CSS-стилей подавления баннеров (начинает действовать сразу при 15% загрузки страницы, пользователь не успевает даже увидеть баннер)",
+                        "Мгновенный перехват новых элементов через синхронный MutationObserver",
+                        "Автоматическое нажатие на иконку закрытия модальных окон для сохранения статуса в панели и полная очистка затемняющих масок (overlay mask)"
+                    )
+                )
+            )
+        ),
+        ChangelogEntry(
+            version = "v1.1.16",
+            date = "Октябрь 2026",
+            releaseType = ReleaseType.IMPROVEMENT,
+            summary = "Автоматическое скрытие и закрытие рекламных баннеров спонсоров в панели 3x-ui",
+            categories = listOf(
+                ChangelogCategory(
+                    title = "🛡️ Автоматическое закрытие рекламы спонсоров",
+                    items = listOf(
+                        "Автоматическое нахождение и мгновенное закрытие рекламных баннеров спонсоров (Nexora Panel, SANAEI и др.) в веб-интерфейсе 3x-ui",
+                        "Использование MutationObserver для автозакрытия баннеров сразу при динамической загрузке страницы"
+                    )
+                )
+            )
+        ),
+        ChangelogEntry(
             version = "v1.1.15",
             date = "Октябрь 2026",
             releaseType = ReleaseType.IMPROVEMENT,

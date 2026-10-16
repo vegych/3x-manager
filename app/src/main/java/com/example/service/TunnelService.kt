@@ -264,14 +264,20 @@ class TunnelService : Service() {
 
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            // Delete old channel if it was created with IMPORTANCE_LOW so settings refresh to MIN
+            try { manager.deleteNotificationChannel(CHANNEL_ID) } catch (_: Exception) {}
+
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "3X-UI Проброс портов",
-                NotificationManager.IMPORTANCE_LOW
+                NotificationManager.IMPORTANCE_MIN
             ).apply {
                 description = "Статус фоновых SSH-туннелей"
+                setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
             }
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             manager.createNotificationChannel(channel)
         }
     }
@@ -291,6 +297,9 @@ class TunnelService : Service() {
             .setContentTitle(title)
             .setContentText(text)
             .setSmallIcon(android.R.drawable.stat_notify_sync)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setShowWhen(false)
+            .setSound(null)
             .setContentIntent(pendingIntent)
             .setOngoing(true)
             .build()

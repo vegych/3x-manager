@@ -49,6 +49,7 @@ object BackupManager {
             sObj.put("basePath", server.basePath)
             sObj.put("username", server.username)
             sObj.put("password", server.password)
+            sObj.put("apiKey", server.apiKey)
             sObj.put("useTunnel", server.useTunnel)
             sObj.put("autoConnectTunnel", server.autoConnectTunnel)
             sObj.put("sshHost", server.sshHost)
@@ -94,6 +95,7 @@ object BackupManager {
                     basePath = sObj.optString("basePath", ""),
                     username = sObj.optString("username", "admin"),
                     password = sObj.optString("password", ""),
+                    apiKey = sObj.optString("apiKey", ""),
                     useTunnel = sObj.optBoolean("useTunnel", false),
                     autoConnectTunnel = sObj.optBoolean("autoConnectTunnel", true),
                     sshHost = sObj.optString("sshHost", ""),

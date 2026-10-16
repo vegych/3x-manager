@@ -296,7 +296,7 @@ object AppUpdateManager {
             val request = DownloadManager.Request(Uri.parse(downloadUrl)).apply {
                 setTitle("3x manager $versionName")
                 setDescription("Загрузка обновления $versionName")
-                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                setNotificationVisibility(DownloadManager.Request.VISIBILITY_HIDDEN)
                 setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
                 setMimeType("application/vnd.android.package-archive")
             }

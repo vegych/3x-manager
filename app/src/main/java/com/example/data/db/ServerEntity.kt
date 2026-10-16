@@ -13,6 +13,7 @@ data class ServerEntity(
     val basePath: String = "",
     val username: String = "",
     val password: String = "",
+    val apiKey: String = "",
 
     // Termius-style Auto Port Forwarding & SSH Tunnel settings
     val useTunnel: Boolean = false,

@@ -62,6 +62,7 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.NotificationsOff
+import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Tune
@@ -943,7 +944,7 @@ fun SettingsDialog(
     currentLanguage: AppLanguage = AppLanguage.SYSTEM,
     strings: Strings = RussianStrings,
     tunnelState: com.example.service.ActiveTunnelState,
-    billingNotificationsEnabled: Boolean = true,
+    billingNotificationsEnabled: Boolean = false,
     billingNotificationDays: Set<Int> = setOf(7, 3, 1),
     onToggleBillingNotifications: (Boolean) -> Unit = {},
     onToggleBillingNotificationDay: (Int) -> Unit = {},
@@ -971,6 +972,7 @@ fun SettingsDialog(
     val isCheckingUpdate by viewModel.isCheckingUpdate.collectAsStateWithLifecycle()
     val apiAutoRefreshEnabled by viewModel.apiAutoRefreshEnabled.collectAsStateWithLifecycle()
     val apiAutoRefreshIntervalHours by viewModel.apiAutoRefreshIntervalHours.collectAsStateWithLifecycle()
+    val autoCloseSponsorAds by viewModel.autoCloseSponsorAds.collectAsStateWithLifecycle()
     var showChangelogDialog by remember { mutableStateOf(false) }
 
     // WebDAV states (cached in remember)
@@ -1381,7 +1383,50 @@ fun SettingsDialog(
                             }
                         }
 
-                        // 4. Версия и Обновление приложения (GitHub Releases Auto-Updater)
+                        // 5. Автозакрытие рекламы спонсоров в панели 3x-ui
+                        Card(
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                    Icon(
+                                        imageVector = Icons.Default.Security,
+                                        contentDescription = null,
+                                        tint = if (autoCloseSponsorAds) CyanPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(10.dp))
+                                    Column {
+                                        Text(
+                                            text = strings.autoCloseSponsorAdsToggleLabel,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Text(
+                                            text = strings.autoCloseSponsorAdsToggleSub,
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                                Switch(
+                                    checked = autoCloseSponsorAds,
+                                    onCheckedChange = { checked ->
+                                        viewModel.setAutoCloseSponsorAds(checked)
+                                    }
+                                )
+                            }
+                        }
+
+                        // 6. Версия и Обновление приложения (GitHub Releases Auto-Updater)
                         Card(
                             shape = RoundedCornerShape(12.dp),
                             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)),

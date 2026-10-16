@@ -109,6 +109,16 @@ class AppRepository(context: Context) {
             return Result.success(BaseResponse(success = true, msg = "Ожидание запуска SSH-туннеля"))
         }
         val url = server.getEffectiveUrl(tunnelPort)
+
+        // Priority 1: API Key
+        if (server.apiKey.isNotBlank()) {
+            val apiTest = apiClient.getInbounds(url, server.apiKey)
+            if (apiTest.isSuccess) {
+                return Result.success(BaseResponse(success = true, msg = "Авторизация по API-ключу успешна"))
+            }
+        }
+
+        // Priority 2: Login & Password fallback
         val res = apiClient.login(url, server.username, server.password)
         if (res.isFailure && (server.host.startsWith("194.87.") || server.host == "localhost")) {
             // Simulated fallback for demo server
@@ -124,7 +134,7 @@ class AppRepository(context: Context) {
         }
 
         val url = server.getEffectiveUrl(tunnelPort)
-        val res = apiClient.getServerStatus(url)
+        val res = apiClient.getServerStatus(url, server.apiKey)
         if (res.isSuccess) {
             val obj = res.getOrNull()?.obj ?: return Result.failure(Exception("Пустой ответ статуса"))
             return Result.success(obj)
@@ -141,7 +151,7 @@ class AppRepository(context: Context) {
         }
 
         val url = server.getEffectiveUrl(tunnelPort)
-        val res = apiClient.getInbounds(url)
+        val res = apiClient.getInbounds(url, server.apiKey)
         if (res.isSuccess) {
             val list = res.getOrNull()?.obj ?: emptyList()
             return Result.success(list)
@@ -153,7 +163,7 @@ class AppRepository(context: Context) {
 
     suspend fun restartXray(server: ServerEntity, tunnelPort: Int? = null): Result<BaseResponse> {
         val url = server.getEffectiveUrl(tunnelPort)
-        val res = apiClient.restartXray(url)
+        val res = apiClient.restartXray(url, server.apiKey)
         if (res.isFailure) {
             return Result.success(BaseResponse(success = true, msg = "Служба Xray успешно перезапущена"))
         }
@@ -162,7 +172,7 @@ class AppRepository(context: Context) {
 
     suspend fun resetAllTraffics(server: ServerEntity, tunnelPort: Int? = null): Result<BaseResponse> {
         val url = server.getEffectiveUrl(tunnelPort)
-        val res = apiClient.resetAllTraffics(url)
+        val res = apiClient.resetAllTraffics(url, server.apiKey)
         if (res.isFailure) {
             return Result.success(BaseResponse(success = true, msg = "Трафик сброшен"))
         }
@@ -171,7 +181,7 @@ class AppRepository(context: Context) {
 
     suspend fun deleteInbound(server: ServerEntity, inboundId: Int, tunnelPort: Int? = null): Result<BaseResponse> {
         val url = server.getEffectiveUrl(tunnelPort)
-        val res = apiClient.deleteInbound(url, inboundId)
+        val res = apiClient.deleteInbound(url, inboundId, server.apiKey)
         if (res.isFailure) {
             return Result.success(BaseResponse(success = true, msg = "Подключение удалено"))
         }

@@ -115,7 +115,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // Billing Notification Settings
     private val _billingNotificationsEnabled = MutableStateFlow(
-        prefs.getBoolean("billing_notifications_enabled", true)
+        prefs.getBoolean("billing_notifications_enabled", false)
     )
     val billingNotificationsEnabled: StateFlow<Boolean> = _billingNotificationsEnabled.asStateFlow()
 
@@ -176,6 +176,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _apiAutoRefreshIntervalHours.value = validHours
         prefs.edit().putInt("api_auto_refresh_interval_hours", validHours).apply()
         checkAndAutoRefreshApiBillings()
+    }
+
+    // Auto-close sponsor ads in 3x-ui panel WebView
+    private val _autoCloseSponsorAds = MutableStateFlow(prefs.getBoolean("auto_close_sponsor_ads", true))
+    val autoCloseSponsorAds: StateFlow<Boolean> = _autoCloseSponsorAds.asStateFlow()
+
+    fun setAutoCloseSponsorAds(enabled: Boolean) {
+        _autoCloseSponsorAds.value = enabled
+        prefs.edit().putBoolean("auto_close_sponsor_ads", enabled).apply()
+        com.example.ui.web.ServerWebViewStore.setAutoCloseSponsorAds(enabled)
     }
 
     fun checkAndAutoRefreshApiBillings() {
@@ -363,6 +373,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     val downloadProgress: StateFlow<Float?> = _downloadProgress.asStateFlow()
 
     init {
+        com.example.ui.web.ServerWebViewStore.setAutoCloseSponsorAds(_autoCloseSponsorAds.value)
         viewModelScope.launch {
             repository.initDefaultDataIfNeeded()
             updateLanIp()

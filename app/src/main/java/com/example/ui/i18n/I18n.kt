@@ -40,6 +40,8 @@ interface Strings {
     val actionPaste: String
     val panelUsernameField: String
     val panelPasswordField: String
+    val panelApiKeyField: String
+    val panelApiKeyHint: String
 
     val portForwardHeader: String
     val portForwardSub: String
@@ -91,6 +93,9 @@ interface Strings {
     val apiAutoRefreshToggleLabel: String
     val apiAutoRefreshToggleSub: String
     val apiAutoRefreshIntervalLabel: String
+
+    val autoCloseSponsorAdsToggleLabel: String
+    val autoCloseSponsorAdsToggleSub: String
 
     val btnSave: String
     val btnCancel: String
@@ -236,6 +241,8 @@ object RussianStrings : Strings {
     override val actionPaste = "Вставить"
     override val panelUsernameField = "Логин от панели"
     override val panelPasswordField = "Пароль от панели"
+    override val panelApiKeyField = "API-ключ панели 3x-ui (опционально)"
+    override val panelApiKeyHint = "Приоритет перед логином/паролем..."
 
     override val portForwardHeader = "Сервер для проброса портов"
     override val portForwardSub = "Укажите промежуточный SSH-сервер (Intermediate host):"
@@ -287,6 +294,9 @@ object RussianStrings : Strings {
     override val apiAutoRefreshToggleLabel = "Автообновление баланса API"
     override val apiAutoRefreshToggleSub = "Периодически запрашивать баланс Timeweb, Selectel и Beget"
     override val apiAutoRefreshIntervalLabel = "Интервал обновления (не менее 2 часов):"
+
+    override val autoCloseSponsorAdsToggleLabel = "Автозакрытие рекламы в панели"
+    override val autoCloseSponsorAdsToggleSub = "Автоматически скрывать и закрывать баннеры и окна спонсоров в панели 3x-ui"
 
     override val btnSave = "Сохранить"
     override val btnCancel = "Отмена"
@@ -426,6 +436,8 @@ object EnglishStrings : Strings {
     override val actionPaste = "Paste"
     override val panelUsernameField = "Panel Username"
     override val panelPasswordField = "Panel Password"
+    override val panelApiKeyField = "3x-ui Panel API Key (optional)"
+    override val panelApiKeyHint = "Takes priority over username/password..."
 
     override val portForwardHeader = "Port Forwarding Server"
     override val portForwardSub = "Specify intermediate SSH server (Intermediate host):"
@@ -477,6 +489,9 @@ object EnglishStrings : Strings {
     override val apiAutoRefreshToggleLabel = "API Balance Auto-Refresh"
     override val apiAutoRefreshToggleSub = "Periodically check Timeweb, Selectel, and Beget balances"
     override val apiAutoRefreshIntervalLabel = "Check interval (min 2 hours):"
+
+    override val autoCloseSponsorAdsToggleLabel = "Auto-close panel ads"
+    override val autoCloseSponsorAdsToggleSub = "Automatically hide and close sponsor banners and popups in 3x-ui panel"
 
     override val btnSave = "Save"
     override val btnCancel = "Cancel"

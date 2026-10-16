@@ -540,6 +540,10 @@ fun ServerEditDialogClean(
     var panelPassword by remember { mutableStateOf(initialServer?.password ?: "") }
     var isPasswordVisible by remember { mutableStateOf(false) }
 
+    // API Key (Optionally overrides username/password for 3x-ui v3.3.0+)
+    var panelApiKey by remember { mutableStateOf(initialServer?.apiKey ?: "") }
+    var isApiKeyVisible by remember { mutableStateOf(false) }
+
     // Detected localhost
     val isLocalhost = panelUrl.contains("localhost", ignoreCase = true) ||
             panelUrl.contains("127.0.0.1")
@@ -727,6 +731,30 @@ fun ServerEditDialogClean(
                         modifier = Modifier
                             .fillMaxWidth()
                             .testTag("panel_password_input")
+                    )
+                }
+
+                // Строка 4.5: API-ключ от панели 3x-ui (опционально, имеет приоритет над логином/паролем)
+                item {
+                    OutlinedTextField(
+                        value = panelApiKey,
+                        onValueChange = { panelApiKey = it },
+                        label = { Text(strings.panelApiKeyField) },
+                        placeholder = { Text(strings.panelApiKeyHint) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(12.dp),
+                        visualTransformation = if (isApiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            IconButton(onClick = { isApiKeyVisible = !isApiKeyVisible }) {
+                                Icon(
+                                    imageVector = if (isApiKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                    contentDescription = null
+                                )
+                            }
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .testTag("panel_api_key_input")
                     )
                 }
 
@@ -1837,6 +1865,7 @@ fun ServerEditDialogClean(
                         basePath = parsed.basePath,
                         username = panelUsername.trim(),
                         password = panelPassword,
+                        apiKey = panelApiKey.trim(),
                         useTunnel = isLocalhost,
                         autoConnectTunnel = isLocalhost,
                         sshHost = if (isLocalhost) sshHost.trim() else "",

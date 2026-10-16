@@ -124,13 +124,22 @@ class XuiApiClient {
         }
     }
 
-    suspend fun getServerStatus(baseUrl: String): Result<ServerStatusResponse> = withContext(Dispatchers.IO) {
+    private fun Request.Builder.withApiKey(apiKey: String): Request.Builder {
+        if (apiKey.isNotBlank()) {
+            header("x-api-key", apiKey)
+            header("Authorization", "Bearer $apiKey")
+        }
+        return this
+    }
+
+    suspend fun getServerStatus(baseUrl: String, apiKey: String = ""): Result<ServerStatusResponse> = withContext(Dispatchers.IO) {
         try {
             val url = buildUrl(baseUrl, "server/status")
             val request = Request.Builder()
                 .url(url)
                 .get()
                 .header("Accept", "application/json")
+                .withApiKey(apiKey)
                 .build()
 
             val response = okHttpClient.newCall(request).execute()
@@ -151,13 +160,14 @@ class XuiApiClient {
         }
     }
 
-    suspend fun getInbounds(baseUrl: String): Result<InboundsListResponse> = withContext(Dispatchers.IO) {
+    suspend fun getInbounds(baseUrl: String, apiKey: String = ""): Result<InboundsListResponse> = withContext(Dispatchers.IO) {
         try {
             val url = buildUrl(baseUrl, "xui/API/inbounds/list")
             val request = Request.Builder()
                 .url(url)
                 .get()
                 .header("Accept", "application/json")
+                .withApiKey(apiKey)
                 .build()
 
             val response = okHttpClient.newCall(request).execute()
@@ -178,13 +188,14 @@ class XuiApiClient {
         }
     }
 
-    suspend fun restartXray(baseUrl: String): Result<BaseResponse> = withContext(Dispatchers.IO) {
+    suspend fun restartXray(baseUrl: String, apiKey: String = ""): Result<BaseResponse> = withContext(Dispatchers.IO) {
         try {
             val url = buildUrl(baseUrl, "server/restartXrayService")
             val request = Request.Builder()
                 .url(url)
                 .post("{}".toRequestBody("application/json".toMediaType()))
                 .header("Accept", "application/json")
+                .withApiKey(apiKey)
                 .build()
 
             val response = okHttpClient.newCall(request).execute()
@@ -197,13 +208,14 @@ class XuiApiClient {
         }
     }
 
-    suspend fun resetAllTraffics(baseUrl: String): Result<BaseResponse> = withContext(Dispatchers.IO) {
+    suspend fun resetAllTraffics(baseUrl: String, apiKey: String = ""): Result<BaseResponse> = withContext(Dispatchers.IO) {
         try {
             val url = buildUrl(baseUrl, "xui/API/inbounds/resetAllTraffics")
             val request = Request.Builder()
                 .url(url)
                 .post("{}".toRequestBody("application/json".toMediaType()))
                 .header("Accept", "application/json")
+                .withApiKey(apiKey)
                 .build()
 
             val response = okHttpClient.newCall(request).execute()
@@ -216,13 +228,14 @@ class XuiApiClient {
         }
     }
 
-    suspend fun deleteInbound(baseUrl: String, inboundId: Int): Result<BaseResponse> = withContext(Dispatchers.IO) {
+    suspend fun deleteInbound(baseUrl: String, inboundId: Int, apiKey: String = ""): Result<BaseResponse> = withContext(Dispatchers.IO) {
         try {
             val url = buildUrl(baseUrl, "xui/API/inbounds/del/$inboundId")
             val request = Request.Builder()
                 .url(url)
                 .post("{}".toRequestBody("application/json".toMediaType()))
                 .header("Accept", "application/json")
+                .withApiKey(apiKey)
                 .build()
 
             val response = okHttpClient.newCall(request).execute()
@@ -235,13 +248,14 @@ class XuiApiClient {
         }
     }
 
-    suspend fun getPanelUpdateInfo(baseUrl: String): Result<com.example.data.model.PanelUpdateInfoResponse> = withContext(Dispatchers.IO) {
+    suspend fun getPanelUpdateInfo(baseUrl: String, apiKey: String = ""): Result<com.example.data.model.PanelUpdateInfoResponse> = withContext(Dispatchers.IO) {
         try {
             val url = buildUrl(baseUrl, "server/getPanelUpdateInfo")
             val request = Request.Builder()
                 .url(url)
                 .get()
                 .header("Accept", "application/json")
+                .withApiKey(apiKey)
                 .build()
 
             val response = okHttpClient.newCall(request).execute()

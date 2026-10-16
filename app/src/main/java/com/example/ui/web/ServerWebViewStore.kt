@@ -17,6 +17,136 @@ object ServerWebViewStore {
     private val webViewMap = mutableMapOf<Long, WebView>()
     private val desktopModeMap = mutableMapOf<Long, Boolean>()
 
+    @Volatile
+    private var autoCloseSponsorAdsEnabled: Boolean = true
+
+    fun setAutoCloseSponsorAds(enabled: Boolean) {
+        autoCloseSponsorAdsEnabled = enabled
+    }
+
+    private val SPONSOR_BLOCK_SCRIPT = """
+        (function() {
+            function injectSuppressionStyle() {
+                if (document.getElementById('__instant_sponsor_block_style')) return;
+                var style = document.createElement('style');
+                style.id = '__instant_sponsor_block_style';
+                style.textContent = `
+                    .ant-modal-root:has(a[href*="sanaei"]),
+                    .ant-modal-root:has(a[href*="nexora"]),
+                    .ant-modal-wrap:has(a[href*="sanaei"]),
+                    .ant-modal-wrap:has(a[href*="nexora"]),
+                    .ant-modal:has(a[href*="sanaei"]),
+                    .ant-modal:has(a[href*="nexora"]),
+                    .ant-alert:has(a[href*="sanaei"]),
+                    .ant-alert:has(a[href*="nexora"]),
+                    .ant-card:has(a[href*="sanaei"]),
+                    .ant-card:has(a[href*="nexora"]),
+                    [class*="sponsor"],
+                    [id*="sponsor"],
+                    [class*="ad-banner"],
+                    [class*="advertisement"],
+                    .sponsor-card,
+                    .sponsor-banner,
+                    .sponsor-modal,
+                    .__sponsor_hidden {
+                        display: none !important;
+                        visibility: hidden !important;
+                        opacity: 0 !important;
+                        pointer-events: none !important;
+                        height: 0 !important;
+                        max-height: 0 !important;
+                        overflow: hidden !important;
+                    }
+                `;
+                (document.head || document.documentElement).appendChild(style);
+            }
+
+            function dismissElement(el) {
+                if (!el) return;
+                el.classList.add('__sponsor_hidden');
+                el.style.setProperty('display', 'none', 'important');
+                el.style.setProperty('visibility', 'hidden', 'important');
+                el.style.setProperty('opacity', '0', 'important');
+                el.style.setProperty('pointer-events', 'none', 'important');
+
+                // Click close icon if present to persist dismissal in panel state
+                var closeBtn = el.querySelector('.ant-modal-close, .ant-alert-close-icon, .anticon-close, button[aria-label="Close"], button[aria-label="close"], button.close, [class*="close"]');
+                if (closeBtn && typeof closeBtn.click === 'function') {
+                    try { closeBtn.click(); } catch(e) {}
+                }
+
+                // If element is a modal or wrapped in modal, purge root and backdrop mask
+                var modalWrap = el.closest('.ant-modal-wrap') || el.closest('.ant-modal-root');
+                if (modalWrap) {
+                    modalWrap.classList.add('__sponsor_hidden');
+                    modalWrap.style.setProperty('display', 'none', 'important');
+                    var mask = modalWrap.parentElement ? modalWrap.parentElement.querySelector('.ant-modal-mask') : null;
+                    if (mask) {
+                        mask.style.setProperty('display', 'none', 'important');
+                        try { mask.parentNode.removeChild(mask); } catch(e) {}
+                    }
+                    document.body.classList.remove('ant-scrolling-effect');
+                    document.body.style.removeProperty('overflow');
+                    document.body.style.removeProperty('width');
+                    try { modalWrap.parentNode.removeChild(modalWrap); } catch(e) {}
+                } else {
+                    try {
+                        if (el.parentNode) el.parentNode.removeChild(el);
+                    } catch(e) {}
+                }
+            }
+
+            function scanAndPurge() {
+                injectSuppressionStyle();
+
+                // 1. Direct sponsor links (Nexora, Sanaei, Telegram sponsor channels)
+                var sponsorLinks = document.querySelectorAll('a[href*="sanaei"], a[href*="nexora"], a[href*="sponsor"], a[href*="t.me/nexora"], a[href*="t.me/sanaei"]');
+                sponsorLinks.forEach(function(link) {
+                    var container = link.closest('.ant-modal, .ant-modal-wrap, .ant-alert, .ant-card, [class*="card"], [class*="alert"], div');
+                    if (container && container !== document.body && container !== document.documentElement) {
+                        dismissElement(container);
+                    }
+                });
+
+                // 2. Alert banners or modal dialogs containing sponsor text
+                var targets = document.querySelectorAll('.ant-alert, .ant-modal, .ant-card, [class*="sponsor"], [class*="ad-banner"], [class*="advertisement"]');
+                targets.forEach(function(el) {
+                    var txt = (el.innerText || '').toLowerCase();
+                    if (txt.includes('спонсор') || txt.includes('sponsor') || txt.includes('nexora') || txt.includes('sanaei')) {
+                        dismissElement(el);
+                    }
+                });
+            }
+
+            // Run immediately
+            scanAndPurge();
+
+            // MutationObserver for sub-millisecond execution on dynamic DOM changes
+            if (window.MutationObserver && !window.__sponsorObserver) {
+                window.__sponsorObserver = new MutationObserver(function() {
+                    scanAndPurge();
+                });
+                var root = document.body || document.documentElement;
+                if (root) {
+                    window.__sponsorObserver.observe(root, { childList: true, subtree: true });
+                }
+            }
+
+            // 30ms high-speed interval loop during first 3 seconds of load
+            if (!window.__sponsorFastInterval) {
+                var fastCycles = 0;
+                window.__sponsorFastInterval = setInterval(function() {
+                    fastCycles++;
+                    scanAndPurge();
+                    if (fastCycles > 100) {
+                        clearInterval(window.__sponsorFastInterval);
+                        setInterval(scanAndPurge, 300);
+                    }
+                }, 30);
+            }
+        })();
+    """.trimIndent()
+
     fun getOrCreateWebView(
         context: Context,
         server: ServerEntity,
@@ -115,12 +245,18 @@ object ServerWebViewStore {
         webView.webChromeClient = object : WebChromeClient() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 onProgressChanged(newProgress)
+                if (autoCloseSponsorAdsEnabled && newProgress in 15..95) {
+                    view?.evaluateJavascript(SPONSOR_BLOCK_SCRIPT, null)
+                }
             }
         }
 
         webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 url?.let { onPageStarted(it) }
+                if (autoCloseSponsorAdsEnabled) {
+                    view?.evaluateJavascript(SPONSOR_BLOCK_SCRIPT, null)
+                }
             }
 
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -199,6 +335,11 @@ object ServerWebViewStore {
                         })();
                     """.trimIndent()
                     view?.evaluateJavascript(autoLoginScript, null)
+                }
+
+                // Ultra-fast instant suppression & auto-close of sponsor banners (Nexora, SANAEI, Спонсор, etc.)
+                if (autoCloseSponsorAdsEnabled) {
+                    view?.evaluateJavascript(SPONSOR_BLOCK_SCRIPT, null)
                 }
 
                 // Auto-detect 3x-ui panel version
