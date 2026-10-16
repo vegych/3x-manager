@@ -62,37 +62,47 @@ object ServerWebViewStore {
             }
 
             function dismissElement(el) {
-                if (!el) return;
+                if (!el || el.dataset.sponsorProcessed === 'true') return;
+                el.dataset.sponsorProcessed = 'true';
+
+                // Safely click close button ONCE if present so React updates its internal state
+                var closeBtn = el.querySelector('.ant-modal-close, .ant-alert-close-icon, .anticon-close, button[aria-label="Close"], button[aria-label="close"], button.close');
+                if (closeBtn && typeof closeBtn.click === 'function' && !el.dataset.sponsorClicked) {
+                    el.dataset.sponsorClicked = 'true';
+                    try { closeBtn.click(); } catch(e) {}
+                }
+
+                // Hide element using CSS classes & inline styles with !important (DO NOT remove node from DOM to prevent React removeChild crash)
                 el.classList.add('__sponsor_hidden');
                 el.style.setProperty('display', 'none', 'important');
                 el.style.setProperty('visibility', 'hidden', 'important');
                 el.style.setProperty('opacity', '0', 'important');
                 el.style.setProperty('pointer-events', 'none', 'important');
+                el.style.setProperty('height', '0', 'important');
+                el.style.setProperty('max-height', '0', 'important');
+                el.style.setProperty('overflow', 'hidden', 'important');
+                el.style.setProperty('position', 'absolute', 'important');
+                el.style.setProperty('top', '-9999px', 'important');
 
-                // Click close icon if present to persist dismissal in panel state
-                var closeBtn = el.querySelector('.ant-modal-close, .ant-alert-close-icon, .anticon-close, button[aria-label="Close"], button[aria-label="close"], button.close, [class*="close"]');
-                if (closeBtn && typeof closeBtn.click === 'function') {
-                    try { closeBtn.click(); } catch(e) {}
-                }
-
-                // If element is a modal or wrapped in modal, purge root and backdrop mask
+                // If element is a modal or wrapped in modal, hide root, wrap, and backdrop mask safely without DOM removal
                 var modalWrap = el.closest('.ant-modal-wrap') || el.closest('.ant-modal-root');
                 if (modalWrap) {
                     modalWrap.classList.add('__sponsor_hidden');
                     modalWrap.style.setProperty('display', 'none', 'important');
-                    var mask = modalWrap.parentElement ? modalWrap.parentElement.querySelector('.ant-modal-mask') : null;
+                    modalWrap.style.setProperty('visibility', 'hidden', 'important');
+                    modalWrap.style.setProperty('pointer-events', 'none', 'important');
+
+                    var mask = (modalWrap.parentElement || document).querySelector('.ant-modal-mask');
                     if (mask) {
+                        mask.classList.add('__sponsor_hidden');
                         mask.style.setProperty('display', 'none', 'important');
-                        try { mask.parentNode.removeChild(mask); } catch(e) {}
+                        mask.style.setProperty('visibility', 'hidden', 'important');
+                        mask.style.setProperty('pointer-events', 'none', 'important');
                     }
+
                     document.body.classList.remove('ant-scrolling-effect');
                     document.body.style.removeProperty('overflow');
                     document.body.style.removeProperty('width');
-                    try { modalWrap.parentNode.removeChild(modalWrap); } catch(e) {}
-                } else {
-                    try {
-                        if (el.parentNode) el.parentNode.removeChild(el);
-                    } catch(e) {}
                 }
             }
 
@@ -102,7 +112,7 @@ object ServerWebViewStore {
                 // 1. Direct sponsor links (Nexora, Sanaei, Telegram sponsor channels)
                 var sponsorLinks = document.querySelectorAll('a[href*="sanaei"], a[href*="nexora"], a[href*="sponsor"], a[href*="t.me/nexora"], a[href*="t.me/sanaei"]');
                 sponsorLinks.forEach(function(link) {
-                    var container = link.closest('.ant-modal, .ant-modal-wrap, .ant-alert, .ant-card, [class*="card"], [class*="alert"], div');
+                    var container = link.closest('.ant-modal-root, .ant-modal-wrap, .ant-modal, .ant-alert, .ant-card, [class*="sponsor"], [class*="ad-banner"], [class*="advertisement"]');
                     if (container && container !== document.body && container !== document.documentElement) {
                         dismissElement(container);
                     }

@@ -197,7 +197,7 @@ class TunnelService : Service() {
                         activeTunnels[config.id] = errState
                         activeStatesMap[config.id] = false
                         _tunnelState.value = errState
-                        updateNotification("Ошибка проброса", errorMsg)
+                        updateNotificationOrStopSelf()
                     }
                 } else {
                     val result = tcpRelayManager.startRelay(
@@ -228,7 +228,7 @@ class TunnelService : Service() {
                         activeTunnels[config.id] = errState
                         activeStatesMap[config.id] = false
                         _tunnelState.value = errState
-                        updateNotification("Ошибка TCP реле", errorMsg)
+                        updateNotificationOrStopSelf()
                     }
                 }
             } catch (e: Exception) {
@@ -241,7 +241,7 @@ class TunnelService : Service() {
                 activeTunnels[config.id] = errState
                 activeStatesMap[config.id] = false
                 _tunnelState.value = errState
-                updateNotification("Ошибка", e.message ?: "Ошибка подключения")
+                updateNotificationOrStopSelf()
             }
         }
     }
@@ -250,16 +250,23 @@ class TunnelService : Service() {
         stopTunnelInternal(configId)
     }
 
-    private fun stopTunnelInternal(configId: Long? = null) {
-        stopTunnelInternalStatic(configId)
-        if (activeTunnels.isEmpty()) {
+    private fun updateNotificationOrStopSelf() {
+        val runningCount = activeTunnels.values.count { it.isRunning }
+        if (runningCount > 0) {
+            updateNotification("3X-UI Туннели", "Активно туннелей в фоне: $runningCount")
+        } else {
             try {
                 stopForeground(STOP_FOREGROUND_REMOVE)
+                val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+                manager.cancel(NOTIFICATION_ID)
             } catch (_: Exception) {}
-        } else {
-            val runningCount = activeTunnels.values.count { it.isRunning }
-            updateNotification("3X-UI Туннели", "Активно туннелей в фоне: $runningCount")
+            stopSelf()
         }
+    }
+
+    private fun stopTunnelInternal(configId: Long? = null) {
+        stopTunnelInternalStatic(configId)
+        updateNotificationOrStopSelf()
     }
 
     private fun createNotificationChannel() {
