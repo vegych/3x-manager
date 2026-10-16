@@ -332,68 +332,86 @@ fun ServerCardSimple(
             .fillMaxWidth()
             .testTag("server_card_${server.id}")
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp)
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
+            // Строка 1: Название сервера и иконки действий (Edit / Delete)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
             ) {
-                if (server.useTunnel) {
-                    TermiusBadgeL()
-                    Spacer(modifier = Modifier.width(8.dp))
-                }
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                    ) {
-                        Text(
-                            text = server.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp,
-                            letterSpacing = (-0.3).sp,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                        if (server.useTunnel && isTunnelActive) {
-                            Surface(
-                                shape = RoundedCornerShape(6.dp),
-                                color = MintSecondary.copy(alpha = 0.18f)
-                            ) {
-                                Text(
-                                    text = strings.tunnelOnBadge,
-                                    color = MintSecondary,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 10.sp,
-                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                                )
-                            }
-                        }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp)
+                ) {
+                    if (server.useTunnel) {
+                        TermiusBadgeL()
+                        Spacer(modifier = Modifier.width(6.dp))
                     }
                     Text(
-                        text = subtitleText,
-                        style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        fontSize = 12.sp,
+                        text = server.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 15.sp,
+                        letterSpacing = (-0.3).sp,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    if (server.useTunnel && isTunnelActive) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = MintSecondary.copy(alpha = 0.18f)
+                        ) {
+                            Text(
+                                text = strings.tunnelOnBadge,
+                                color = MintSecondary,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 10.sp,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
 
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    IconButton(onClick = onEdit, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.Edit, contentDescription = strings.actionEdit, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(15.dp))
+                    }
+                    IconButton(onClick = onDelete, modifier = Modifier.size(28.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = strings.actionDelete, tint = RedAccent, modifier = Modifier.size(15.dp))
+                    }
                 }
             }
 
+            // Строка 2: Полный IP-адрес / Хост (слева) и Статус оплаты / +1 мес (справа)
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.End,
-                modifier = Modifier.padding(start = 4.dp)
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth()
             ) {
+                Text(
+                    text = subtitleText,
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontSize = 12.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(end = 8.dp)
+                )
+
                 if (billingStatus.type != BillingType.NONE && billingStatus.badgeText.isNotBlank()) {
                     val badgeBg = when {
                         billingStatus.isExpired -> RedAccent.copy(alpha = 0.16f)
@@ -411,8 +429,7 @@ fun ServerCardSimple(
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        modifier = Modifier.padding(end = 4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         Surface(
                             shape = RoundedCornerShape(6.dp),
@@ -424,7 +441,7 @@ fun ServerCardSimple(
                         ) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.dp)
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
                             ) {
                                 Icon(
                                     imageVector = if (isApi) Icons.Default.AccountBalanceWallet else Icons.Default.CalendarToday,
@@ -432,16 +449,16 @@ fun ServerCardSimple(
                                     tint = badgeColor,
                                     modifier = Modifier.size(12.dp)
                                 )
-                                Spacer(modifier = Modifier.width(4.dp))
+                                Spacer(modifier = Modifier.width(3.dp))
                                 Text(
                                     text = billingStatus.badgeText,
                                     color = badgeColor,
                                     style = MaterialTheme.typography.labelSmall,
                                     fontWeight = FontWeight.Bold,
-                                    fontSize = 11.5.sp
+                                    fontSize = 11.sp
                                 )
                                 if (isApi) {
-                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Spacer(modifier = Modifier.width(3.dp))
                                     Icon(
                                         imageVector = Icons.Default.Sync,
                                         contentDescription = strings.billingRefreshTooltip,
@@ -451,14 +468,32 @@ fun ServerCardSimple(
                                 }
                             }
                         }
-                    }
-                }
 
-                IconButton(onClick = onEdit, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Edit, contentDescription = strings.actionEdit, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(16.dp))
-                }
-                IconButton(onClick = onDelete, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Default.Delete, contentDescription = strings.actionDelete, tint = RedAccent, modifier = Modifier.size(16.dp))
+                        // Кнопка продления "+1 мес" / "+30 дн"
+                        if (!isApi && onExtendBilling != null) {
+                            val extendLabel = if (billingStatus.type == BillingType.MONTHLY_DAY) {
+                                "+1 мес"
+                            } else {
+                                "+${if (server.billingIntervalDays > 0) server.billingIntervalDays else 30}дн"
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(6.dp),
+                                color = MintSecondary,
+                                modifier = Modifier
+                                    .clickable { onExtendBilling.invoke() }
+                                    .testTag("extend_server_${server.id}")
+                            ) {
+                                Text(
+                                    text = extendLabel,
+                                    color = Color.Black,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp,
+                                    modifier = Modifier.padding(horizontal = 6.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1152,6 +1187,18 @@ fun ServerEditDialogClean(
                                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                                         )
                                                     }
+                                                    Button(
+                                                        onClick = {
+                                                            val nextMs = BillingManager.addPeriod(tempServer, billingLastPaidDate)
+                                                            billingLastPaidDate = nextMs
+                                                            Toast.makeText(context, "Оплата продлена на 1 месяц!", Toast.LENGTH_SHORT).show()
+                                                        },
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                                        colors = ButtonDefaults.buttonColors(containerColor = MintSecondary, contentColor = Color.Black)
+                                                    ) {
+                                                        Text("+1 месяц", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
+                                                    }
                                                 }
                                                 if (billingLastPaidDate > 0L) {
                                                     TextButton(
@@ -1261,6 +1308,18 @@ fun ServerEditDialogClean(
                                                             style = MaterialTheme.typography.labelSmall,
                                                             color = MaterialTheme.colorScheme.onSurfaceVariant
                                                         )
+                                                    }
+                                                    Button(
+                                                        onClick = {
+                                                            val nextMs = BillingManager.addPeriod(tempIntervalServer, billingLastPaidDate)
+                                                            billingLastPaidDate = nextMs
+                                                            Toast.makeText(context, "Оплата продлена на $intervalVal дн.!", Toast.LENGTH_SHORT).show()
+                                                        },
+                                                        shape = RoundedCornerShape(8.dp),
+                                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+                                                        colors = ButtonDefaults.buttonColors(containerColor = MintSecondary, contentColor = Color.Black)
+                                                    ) {
+                                                        Text("+$intervalVal дн.", fontSize = 11.5.sp, fontWeight = FontWeight.Bold)
                                                     }
                                                 }
                                                 if (billingLastPaidDate > 0L) {
