@@ -81,20 +81,23 @@ class TunnelService : Service() {
             return START_NOT_STICKY
         }
 
-        // Must call startForeground immediately on Android 8+
+        // Must call startForeground immediately on Android 8+ then clear notification
         try {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 startForeground(
                     NOTIFICATION_ID,
-                    buildNotification("3X-UI Туннель", "Подключение к SSH-серверу..."),
+                    buildNotification("3X-UI Туннель", "Работа..."),
                     android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC
                 )
             } else {
                 startForeground(
                     NOTIFICATION_ID,
-                    buildNotification("3X-UI Туннель", "Подключение к SSH-серверу...")
+                    buildNotification("3X-UI Туннель", "Работа...")
                 )
             }
+            stopForeground(STOP_FOREGROUND_REMOVE)
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            manager.cancel(NOTIFICATION_ID)
         } catch (e: Exception) {
             Log.e(TAG, "Failed to start foreground notification", e)
         }
@@ -314,9 +317,9 @@ class TunnelService : Service() {
 
     private fun updateNotification(title: String, text: String) {
         try {
-            val notification = buildNotification(title, text)
+            stopForeground(STOP_FOREGROUND_REMOVE)
             val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.notify(NOTIFICATION_ID, notification)
+            manager.cancel(NOTIFICATION_ID)
         } catch (_: Exception) {}
     }
 

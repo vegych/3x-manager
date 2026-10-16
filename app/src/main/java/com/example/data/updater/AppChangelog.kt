@@ -24,6 +24,30 @@ data class ChangelogEntry(
 object AppChangelog {
     val history = listOf(
         ChangelogEntry(
+            version = "v1.2.0",
+            date = "Октябрь 2026",
+            releaseType = ReleaseType.MAJOR_FEATURE,
+            summary = "Поддержка API-ключа 3x-ui v3.3.0+, автозакрытие рекламы и чистка фоновых уведомлений",
+            categories = listOf(
+                ChangelogCategory(
+                    title = "🔑 API-ключ панели 3x-ui",
+                    items = listOf(
+                        "Добавлена поддержка API-ключа при добавлении и редактировании серверов (для 3x-ui 3.3.0+)",
+                        "Приоритетная авторизация по API-ключу без необходимости вводить логин и пароль",
+                        "Сохранение API-ключа в бэкапах резервных копий"
+                    )
+                ),
+                ChangelogCategory(
+                    title = "⚙️ Настройки и работа в фоне",
+                    items = listOf(
+                        "Переключатель автозакрытия рекламы в общих настройках приложения",
+                        "Полное отключение и автоматическая очистка уведомления работы фоновой службы проброса портов",
+                        "Устранение ошибки React removeChild в панели"
+                    )
+                )
+            )
+        ),
+        ChangelogEntry(
             version = "v1.1.21",
             date = "Октябрь 2026",
             releaseType = ReleaseType.IMPROVEMENT,
