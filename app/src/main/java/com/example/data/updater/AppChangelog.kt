@@ -24,6 +24,33 @@ data class ChangelogEntry(
 object AppChangelog {
     val history = listOf(
         ChangelogEntry(
+            version = "v1.1.15",
+            date = "Октябрь 2026",
+            releaseType = ReleaseType.IMPROVEMENT,
+            summary = "Возвращена кнопка «+1 мес», полный вывод IP-адресов без сокращений и оптимизированные настройки",
+            categories = listOf(
+                ChangelogCategory(
+                    title = "✨ Кнопка «+1 мес»",
+                    items = listOf(
+                        "Возвращена аккуратная кнопка быстрой пролонгации оплаты (+1 мес / +30дн) на карточки серверов и в окно редактирования"
+                    )
+                ),
+                ChangelogCategory(
+                    title = "🎨 Двухстрочные карточки серверов",
+                    items = listOf(
+                        "Полное неразрывное отображение IP-адресов и логинов без срезания многоточием",
+                        "Разделение заголовка и информации об IP по строкам для идеальной читаемости"
+                    )
+                ),
+                ChangelogCategory(
+                    title = "⚙️ Очистка настроек",
+                    items = listOf(
+                        "Удален дублирующий глобальный переключатель API из общего меню настроек (управление перенесено в параметры серверов)"
+                    )
+                )
+            )
+        ),
+        ChangelogEntry(
             version = "v1.1.14",
             date = "Октябрь 2026",
             releaseType = ReleaseType.IMPROVEMENT,
