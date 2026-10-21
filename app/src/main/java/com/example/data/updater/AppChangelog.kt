@@ -24,6 +24,22 @@ data class ChangelogEntry(
 object AppChangelog {
     val history = listOf(
         ChangelogEntry(
+            version = "v1.2.2",
+            date = "Октябрь 2026",
+            releaseType = ReleaseType.BUG_FIX,
+            summary = "Исправлен автоматический вход в интерфейс веб-панели при совместном использовании API-ключа и пароля",
+            categories = listOf(
+                ChangelogCategory(
+                    title = "🔑 Исправление входа в веб-панель",
+                    items = listOf(
+                        "Исправлено подвисание на форме «Имя пользователя / Пароль» при указанном API-ключе",
+                        "Совместная авторизация: API-ключ внедряется в заголовки и куки для API-запросов, а логин и пароль автоматически заполняют форму входа веб-интерфейса",
+                        "Мгновенный переход к дашборду 3x-ui без необходимости вручную нажимать «Войти»"
+                    )
+                )
+            )
+        ),
+        ChangelogEntry(
             version = "v1.2.1",
             date = "Октябрь 2026",
             releaseType = ReleaseType.BUG_FIX,

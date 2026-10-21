@@ -408,8 +408,10 @@ object ServerWebViewStore {
                         })();
                     """.trimIndent()
                     view?.evaluateJavascript(apiKeyLoginScript, null)
-                } else if (server.username.isNotBlank()) {
-                    // Priority 2: Fallback to username & password when API Key is blank
+                }
+
+                if (server.username.isNotBlank()) {
+                    // Always perform Web UI form auto-login when username & password are present
                     val autoLoginScript = """
                         (function() {
                             var targetUser = '${server.username}';
