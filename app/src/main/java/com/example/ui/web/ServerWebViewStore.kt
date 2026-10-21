@@ -157,6 +157,31 @@ object ServerWebViewStore {
         })();
     """.trimIndent()
 
+    fun loadServerUrl(webView: WebView?, server: ServerEntity, url: String) {
+        if (webView == null || url.isBlank()) return
+        val key = server.apiKey.trim()
+        if (key.isNotBlank()) {
+            val headers = mapOf(
+                "x-api-key" to key,
+                "Authorization" to "Bearer $key"
+            )
+            webView.loadUrl(url, headers)
+        } else {
+            webView.loadUrl(url)
+        }
+    }
+
+    private fun getHeadersForServer(server: ServerEntity): Map<String, String> {
+        val key = server.apiKey.trim()
+        if (key.isNotBlank()) {
+            return mapOf(
+                "x-api-key" to key,
+                "Authorization" to "Bearer $key"
+            )
+        }
+        return emptyMap()
+    }
+
     fun getOrCreateWebView(
         context: Context,
         server: ServerEntity,
@@ -186,7 +211,12 @@ object ServerWebViewStore {
             // Load URL ONLY if webView was never loaded or is blank
             val currentUrl = existing.url
             if ((currentUrl.isNullOrBlank() || currentUrl == "about:blank") && initialUrl.isNotBlank()) {
-                existing.loadUrl(initialUrl)
+                val headers = getHeadersForServer(server)
+                if (headers.isNotEmpty()) {
+                    existing.loadUrl(initialUrl, headers)
+                } else {
+                    existing.loadUrl(initialUrl)
+                }
             }
             return existing
         }
@@ -235,7 +265,12 @@ object ServerWebViewStore {
         )
 
         if (initialUrl.isNotBlank()) {
-            newWebView.loadUrl(initialUrl)
+            val headers = getHeadersForServer(server)
+            if (headers.isNotEmpty()) {
+                newWebView.loadUrl(initialUrl, headers)
+            } else {
+                newWebView.loadUrl(initialUrl)
+            }
         }
 
         webViewMap[serverId] = newWebView
@@ -264,6 +299,26 @@ object ServerWebViewStore {
         webView.webViewClient = object : WebViewClient() {
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
                 url?.let { onPageStarted(it) }
+                val apiKey = server.apiKey.trim()
+                if (apiKey.isNotBlank()) {
+                    val tokenScript = """
+                        (function() {
+                            try {
+                                localStorage.setItem('x-api-key', '$apiKey');
+                                localStorage.setItem('token', '$apiKey');
+                                localStorage.setItem('apiKey', '$apiKey');
+                                localStorage.setItem('secret', '$apiKey');
+                                sessionStorage.setItem('x-api-key', '$apiKey');
+                                sessionStorage.setItem('token', '$apiKey');
+                                sessionStorage.setItem('apiKey', '$apiKey');
+                                sessionStorage.setItem('secret', '$apiKey');
+                                document.cookie = 'x-api-key=' + encodeURIComponent('$apiKey') + '; path=/; max-age=31536000';
+                                document.cookie = 'token=' + encodeURIComponent('$apiKey') + '; path=/; max-age=31536000';
+                            } catch(e) {}
+                        })();
+                    """.trimIndent()
+                    view?.evaluateJavascript(tokenScript, null)
+                }
                 if (autoCloseSponsorAdsEnabled) {
                     view?.evaluateJavascript(SPONSOR_BLOCK_SCRIPT, null)
                 }
@@ -293,8 +348,68 @@ object ServerWebViewStore {
                     view?.evaluateJavascript(desktopScript, null)
                 }
 
-                // Auto-login credentials if username is provided
-                if (server.username.isNotBlank()) {
+                val apiKey = server.apiKey.trim()
+                if (apiKey.isNotBlank()) {
+                    // Priority 1: API Key authentication (for 3x-ui v3.3.0+)
+                    val apiKeyLoginScript = """
+                        (function() {
+                            var targetKey = '$apiKey';
+                            if (!targetKey) return;
+
+                            try {
+                                localStorage.setItem('x-api-key', targetKey);
+                                localStorage.setItem('token', targetKey);
+                                localStorage.setItem('apiKey', targetKey);
+                                localStorage.setItem('secret', targetKey);
+                                sessionStorage.setItem('x-api-key', targetKey);
+                                sessionStorage.setItem('token', targetKey);
+                                sessionStorage.setItem('apiKey', targetKey);
+                                sessionStorage.setItem('secret', targetKey);
+                                document.cookie = 'x-api-key=' + encodeURIComponent(targetKey) + '; path=/; max-age=31536000';
+                                document.cookie = 'token=' + encodeURIComponent(targetKey) + '; path=/; max-age=31536000';
+                            } catch(e) {}
+
+                            function fillVueInput(el, val) {
+                                if (!el) return;
+                                var descriptor = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+                                if (descriptor && descriptor.set) {
+                                    descriptor.set.call(el, val);
+                                } else {
+                                    el.value = val;
+                                }
+                                el.dispatchEvent(new Event('input', { bubbles: true }));
+                                el.dispatchEvent(new Event('change', { bubbles: true }));
+                            }
+
+                            function tryApiKeyInject() {
+                                var keyEl = document.querySelector('input[name="apiKey"], input[name="token"], input[id="apiKey"], input[id="token"], input[placeholder*="API"], input[placeholder*="token"], input[placeholder*="Key"], input[placeholder*="ключ"]');
+                                if (keyEl) {
+                                    fillVueInput(keyEl, targetKey);
+                                    setTimeout(function() {
+                                        var btn = document.querySelector('button[type="submit"], button.ant-btn-primary, button.login-btn');
+                                        if (btn && !btn.disabled) {
+                                            btn.click();
+                                        }
+                                    }, 250);
+                                    return true;
+                                }
+                                return false;
+                            }
+
+                            if (!tryApiKeyInject()) {
+                                var tries = 0;
+                                var interval = setInterval(function() {
+                                    tries++;
+                                    if (tryApiKeyInject() || tries > 8) {
+                                        clearInterval(interval);
+                                    }
+                                }, 300);
+                            }
+                        })();
+                    """.trimIndent()
+                    view?.evaluateJavascript(apiKeyLoginScript, null)
+                } else if (server.username.isNotBlank()) {
+                    // Priority 2: Fallback to username & password when API Key is blank
                     val autoLoginScript = """
                         (function() {
                             var targetUser = '${server.username}';

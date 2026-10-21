@@ -24,6 +24,28 @@ data class ChangelogEntry(
 object AppChangelog {
     val history = listOf(
         ChangelogEntry(
+            version = "v1.2.1",
+            date = "Октябрь 2026",
+            releaseType = ReleaseType.BUG_FIX,
+            summary = "Приоритетная авторизация по API-ключу в WebView панели и отключение лишних уведомлений",
+            categories = listOf(
+                ChangelogCategory(
+                    title = "🔑 Фикс авторизации по API-ключу",
+                    items = listOf(
+                        "Исправлен вход в веб-панель WebView при пробросе по SSH — теперь API-ключ имеет 100% приоритет над логином и паролем",
+                        "Автоматическая передача заголовков x-api-key и Bearer token при загрузке страниц WebView",
+                        "Автоматическая подстановка токенов в localStorage и document.cookie при открытии панели"
+                    )
+                ),
+                ChangelogCategory(
+                    title = "🔕 Фоновые службы и уведомления",
+                    items = listOf(
+                        "Полностью удалено статусное уведомление при открытии панелей и пробросе портов"
+                    )
+                )
+            )
+        ),
+        ChangelogEntry(
             version = "v1.2.0",
             date = "Октябрь 2026",
             releaseType = ReleaseType.MAJOR_FEATURE,

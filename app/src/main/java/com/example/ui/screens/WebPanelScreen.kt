@@ -152,7 +152,7 @@ fun WebPanelScreen(
             if (!isTunnelRequired || isTunnelRunning) {
                 val currentWvUrl = webViewInstance?.url
                 if (currentWvUrl.isNullOrBlank() || currentWvUrl == "about:blank") {
-                    webViewInstance?.loadUrl(effectiveUrl)
+                    server?.let { ServerWebViewStore.loadServerUrl(webViewInstance, it, effectiveUrl) }
                 }
             }
         }
@@ -163,7 +163,7 @@ fun WebPanelScreen(
         if (isTunnelRunning && effectiveUrl.isNotBlank()) {
             val currentWvUrl = webViewInstance?.url
             if (currentWvUrl.isNullOrBlank() || currentWvUrl == "about:blank") {
-                webViewInstance?.loadUrl(effectiveUrl)
+                server?.let { ServerWebViewStore.loadServerUrl(webViewInstance, it, effectiveUrl) }
             }
         }
     }
