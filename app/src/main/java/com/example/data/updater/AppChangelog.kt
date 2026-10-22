@@ -24,6 +24,29 @@ data class ChangelogEntry(
 object AppChangelog {
     val history = listOf(
         ChangelogEntry(
+            version = "v1.2.5",
+            date = "Октябрь 2026",
+            releaseType = ReleaseType.BUG_FIX,
+            summary = "Финальная стабилизация входа по API-ключу (включая SSH проброс) и оптимизация релизного пайплайна",
+            categories = listOf(
+                ChangelogCategory(
+                    title = "🔑 API-ключ и WebView",
+                    items = listOf(
+                        "Полноценная авторизация по API-ключу как для прямых адресов, так и для SSH туннелей",
+                        "Автоматическая передача API-ключа через перехватчики fetch/XHR в WebView для SPA интерфейсов",
+                        "Автоматический перебор всех стандартных эндпоинтов 3x-ui и гибридный fallback на куки"
+                    )
+                ),
+                ChangelogCategory(
+                    title = "📦 CI/CD и сборка",
+                    items = listOf(
+                        "Удалена лишняя выгрузка папки artifacts в GitHub Actions",
+                        "Добавлены правила игнорирования временных артефактов в .gitignore"
+                    )
+                )
+            )
+        ),
+        ChangelogEntry(
             version = "v1.2.4",
             date = "Октябрь 2026",
             releaseType = ReleaseType.BUG_FIX,
