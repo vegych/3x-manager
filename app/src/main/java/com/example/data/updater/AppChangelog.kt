@@ -24,6 +24,38 @@ data class ChangelogEntry(
 object AppChangelog {
     val history = listOf(
         ChangelogEntry(
+            version = "v1.2.4",
+            date = "Октябрь 2026",
+            releaseType = ReleaseType.BUG_FIX,
+            summary = "Многопутевое обнаружение API эндпоинтов 3x-ui и гибридная авторизация (API-ключ + Cookie fallback)",
+            categories = listOf(
+                ChangelogCategory(
+                    title = "⚡ Расширенная совместимость API",
+                    items = listOf(
+                        "Автоматическое перебором обнаружение путей API панелей (xui/API, panel/api, api)",
+                        "Гибридный фоновый фолбэк: если запрос по API-ключу отклоняется сервером, автоматически выполняется куки-авторизация по логину и паролю",
+                        "Очистка пакета релизов и исключение временных файлов артефактов"
+                    )
+                )
+            )
+        ),
+        ChangelogEntry(
+            version = "v1.2.3",
+            date = "Октябрь 2026",
+            releaseType = ReleaseType.BUG_FIX,
+            summary = "Глубокая перехватка fetch/XHR запросов для API-ключа и полная совместимость авторизации 3x-ui v3.3.0+",
+            categories = listOf(
+                ChangelogCategory(
+                    title = "🔑 Перехват и подстановка API-ключа",
+                    items = listOf(
+                        "Внедрен перехватчик window.fetch и XMLHttpRequest для автоматического добавления X-Api-Key, x-api-key, Bearer и token заголовков к каждому AJAX-запросу Vue/Axios SPA",
+                        "Расширенная подстановка токенов и куки x-api-key, token, session и 3x-ui при первой загрузке",
+                        "Исправлена работа фоновых запросов к панелям с несколькими вариантами регистра заголовков"
+                    )
+                )
+            )
+        ),
+        ChangelogEntry(
             version = "v1.2.2",
             date = "Октябрь 2026",
             releaseType = ReleaseType.BUG_FIX,

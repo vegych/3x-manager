@@ -176,7 +176,9 @@ object ServerWebViewStore {
         if (key.isNotBlank()) {
             return mapOf(
                 "x-api-key" to key,
-                "Authorization" to "Bearer $key"
+                "X-Api-Key" to key,
+                "Authorization" to "Bearer $key",
+                "token" to key
             )
         }
         return emptyMap()
@@ -303,18 +305,72 @@ object ServerWebViewStore {
                 if (apiKey.isNotBlank()) {
                     val tokenScript = """
                         (function() {
+                            var key = '$apiKey';
+                            if (!key) return;
                             try {
-                                localStorage.setItem('x-api-key', '$apiKey');
-                                localStorage.setItem('token', '$apiKey');
-                                localStorage.setItem('apiKey', '$apiKey');
-                                localStorage.setItem('secret', '$apiKey');
-                                sessionStorage.setItem('x-api-key', '$apiKey');
-                                sessionStorage.setItem('token', '$apiKey');
-                                sessionStorage.setItem('apiKey', '$apiKey');
-                                sessionStorage.setItem('secret', '$apiKey');
-                                document.cookie = 'x-api-key=' + encodeURIComponent('$apiKey') + '; path=/; max-age=31536000';
-                                document.cookie = 'token=' + encodeURIComponent('$apiKey') + '; path=/; max-age=31536000';
+                                localStorage.setItem('x-api-key', key);
+                                localStorage.setItem('X-Api-Key', key);
+                                localStorage.setItem('token', key);
+                                localStorage.setItem('apiKey', key);
+                                localStorage.setItem('secret', key);
+                                sessionStorage.setItem('x-api-key', key);
+                                sessionStorage.setItem('X-Api-Key', key);
+                                sessionStorage.setItem('token', key);
+                                sessionStorage.setItem('apiKey', key);
+                                sessionStorage.setItem('secret', key);
+                                document.cookie = 'x-api-key=' + encodeURIComponent(key) + '; path=/; max-age=31536000';
+                                document.cookie = 'X-Api-Key=' + encodeURIComponent(key) + '; path=/; max-age=31536000';
+                                document.cookie = 'token=' + encodeURIComponent(key) + '; path=/; max-age=31536000';
+                                document.cookie = 'session=' + encodeURIComponent(key) + '; path=/; max-age=31536000';
+                                document.cookie = '3x-ui=' + encodeURIComponent(key) + '; path=/; max-age=31536000';
                             } catch(e) {}
+
+                            if (window.fetch && !window.__apiKeyFetchIntercepted) {
+                                window.__apiKeyFetchIntercepted = true;
+                                var originalFetch = window.fetch;
+                                window.fetch = function(resource, init) {
+                                    init = init || {};
+                                    init.headers = init.headers || {};
+                                    if (init.headers instanceof Headers) {
+                                        init.headers.set('X-Api-Key', key);
+                                        init.headers.set('x-api-key', key);
+                                        init.headers.set('Authorization', 'Bearer ' + key);
+                                        init.headers.set('token', key);
+                                    } else if (Array.isArray(init.headers)) {
+                                        init.headers.push(['X-Api-Key', key]);
+                                        init.headers.push(['x-api-key', key]);
+                                        init.headers.push(['Authorization', 'Bearer ' + key]);
+                                        init.headers.push(['token', key]);
+                                    } else {
+                                        init.headers['X-Api-Key'] = key;
+                                        init.headers['x-api-key'] = key;
+                                        init.headers['Authorization'] = 'Bearer ' + key;
+                                        init.headers['token'] = key;
+                                    }
+                                    return originalFetch.call(this, resource, init);
+                                };
+                            }
+
+                            if (window.XMLHttpRequest && !window.__apiKeyXhrIntercepted) {
+                                window.__apiKeyXhrIntercepted = true;
+                                var originalOpen = XMLHttpRequest.prototype.open;
+                                var originalSend = XMLHttpRequest.prototype.send;
+                                XMLHttpRequest.prototype.open = function() {
+                                    this.__isApiCall = true;
+                                    return originalOpen.apply(this, arguments);
+                                };
+                                XMLHttpRequest.prototype.send = function() {
+                                    if (this.__isApiCall) {
+                                        try {
+                                            this.setRequestHeader('X-Api-Key', key);
+                                            this.setRequestHeader('x-api-key', key);
+                                            this.setRequestHeader('Authorization', 'Bearer ' + key);
+                                            this.setRequestHeader('token', key);
+                                        } catch(e) {}
+                                    }
+                                    return originalSend.apply(this, arguments);
+                                };
+                            }
                         })();
                     """.trimIndent()
                     view?.evaluateJavascript(tokenScript, null)

@@ -16,5 +16,7 @@
 local.properties
 .env
 .build-outputs/
-firebase-applet-config.json
+release-artifacts/
+artifacts/
+.aistudio/artifacts/
 

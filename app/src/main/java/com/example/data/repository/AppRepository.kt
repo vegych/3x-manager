@@ -134,10 +134,20 @@ class AppRepository(context: Context) {
         }
 
         val url = server.getEffectiveUrl(tunnelPort)
-        val res = apiClient.getServerStatus(url, server.apiKey)
-        if (res.isSuccess) {
-            val obj = res.getOrNull()?.obj ?: return Result.failure(Exception("Пустой ответ статуса"))
-            return Result.success(obj)
+        var res = apiClient.getServerStatus(url, server.apiKey)
+        if (res.isSuccess && res.getOrNull()?.obj != null) {
+            return Result.success(res.getOrNull()!!.obj!!)
+        }
+
+        // Fallback: Perform login with username & password if available
+        if (server.username.isNotBlank()) {
+            val loginRes = apiClient.login(url, server.username, server.password)
+            if (loginRes.isSuccess || loginRes.getOrNull()?.success == true) {
+                res = apiClient.getServerStatus(url, "")
+                if (res.isSuccess && res.getOrNull()?.obj != null) {
+                    return Result.success(res.getOrNull()!!.obj!!)
+                }
+            }
         }
 
         // If connection fails and it's demo or server unreachable, provide simulated status so user can experience full UI
@@ -151,10 +161,20 @@ class AppRepository(context: Context) {
         }
 
         val url = server.getEffectiveUrl(tunnelPort)
-        val res = apiClient.getInbounds(url, server.apiKey)
-        if (res.isSuccess) {
-            val list = res.getOrNull()?.obj ?: emptyList()
-            return Result.success(list)
+        var res = apiClient.getInbounds(url, server.apiKey)
+        if (res.isSuccess && res.getOrNull()?.obj != null) {
+            return Result.success(res.getOrNull()!!.obj!!)
+        }
+
+        // Fallback: Perform login with username & password if available
+        if (server.username.isNotBlank()) {
+            val loginRes = apiClient.login(url, server.username, server.password)
+            if (loginRes.isSuccess || loginRes.getOrNull()?.success == true) {
+                res = apiClient.getInbounds(url, "")
+                if (res.isSuccess && res.getOrNull()?.obj != null) {
+                    return Result.success(res.getOrNull()!!.obj!!)
+                }
+            }
         }
 
         // Demo fallback
